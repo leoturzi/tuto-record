@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>tuto-record</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:"
+    />
+    <link href="./assets/styles.css" rel="stylesheet" />
+  </head>
+
+  <body>
+    <main>
+      <h1>tuto-record</h1>
+      <p class="lead">Saves a screenshot of every display each time you click.</p>
+
+      <section id="permissions" hidden>
+        <h2>Permissions</h2>
+        <p class="hint">
+          tuto-record needs both permissions below. macOS asked for them on launch.
+        </p>
+
+        <article class="perm" data-kind="accessibility">
+          <div class="perm-text">
+            <h3>Accessibility</h3>
+            <p>Lets tuto-record notice your clicks in any app.</p>
+          </div>
+          <span class="badge" data-role="badge"></span>
+          <button type="button" data-role="open">Open Settings</button>
+        </article>
+
+        <article class="perm" data-kind="screen">
+          <div class="perm-text">
+            <h3>Screen Recording</h3>
+            <p>Lets tuto-record take the screenshots.</p>
+          </div>
+          <span class="badge" data-role="badge"></span>
+          <button type="button" data-role="open">Open Settings</button>
+        </article>
+
+        <div id="relaunch-box" hidden>
+          <p id="relaunch-hint"></p>
+          <button type="button" id="relaunch">Relaunch app</button>
+        </div>
+      </section>
+
+      <section id="output">
+        <h2>Output folder</h2>
+        <p class="hint">Screenshots are saved directly in this folder.</p>
+        <article class="folder">
+          <p id="folder-path" class="path"></p>
+          <div class="folder-actions">
+            <button type="button" id="choose-folder">Choose folder…</button>
+            <button type="button" id="open-folder" hidden>Open folder</button>
+          </div>
+          <p id="folder-problem" class="problem" hidden></p>
+        </article>
+      </section>
+
+      <section id="recorder">
+        <h2>Recording</h2>
+        <p class="hint">
+          Each left click saves one screenshot per display. The window hides while recording. Stop
+          with
+          <strong>⌃⌥⌘R</strong> or by clicking the Dock icon.
+        </p>
+        <button type="button" id="record" class="primary" disabled>Start recording</button>
+        <p id="recorder-summary" class="summary" hidden></p>
+        <p id="recorder-error" class="problem" hidden></p>
+        <p id="shortcut-warning" class="problem" hidden></p>
+      </section>
+
+      <p id="status" class="status" hidden></p>
+    </main>
+
+    <script type="module" src="./src/renderer.ts"></script>
+  </body>
+</html>

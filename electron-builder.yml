@@ -1,0 +1,39 @@
+appId: com.tuto-record.app
+productName: tuto-record
+directories:
+  buildResources: build
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!docs/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md,GLOSSARY.md,MVP_PLAN.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!**/node_modules/@img/*-darwin-x64/**'
+  - '!**/node_modules/@koromix/koffi-darwin-x64/**'
+  - '!**/node_modules/uiohook-napi/prebuilds/{darwin-x64,linux-arm64,linux-loong64,linux-x64,win32-arm64,win32-x64}/**'
+asarUnpack:
+  - resources/**
+  - '**/*.node'
+  - '**/node_modules/sharp/**'
+  - '**/node_modules/@img/**'
+  - '**/node_modules/@koromix/**'
+mac:
+  target:
+    - dir
+    - dmg
+  category: public.app-category.productivity
+  hardenedRuntime: true
+  electronLanguages:
+    - en
+  gatekeeperAssess: false
+  identity: null
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  notarize: false
+dmg:
+  artifactName: ${name}-${version}.${ext}
+  format: UDBZ
+npmRebuild: false
+afterPack: build/adhocSign.cjs
