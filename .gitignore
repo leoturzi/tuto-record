@@ -5,3 +5,6 @@ out
 .eslintcache
 *.log*
 firsttuto
+# Personal Claude settings and instructions
+.claude/
+CLAUDE.local.md

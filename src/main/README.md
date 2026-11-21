@@ -58,7 +58,7 @@ Things that are easy to get wrong:
 - **`desktopCapturer.getSources` does not prompt.** On macOS 14 with Electron 44 it fails with "Failed to get sources" when Screen Recording is missing, and never adds the app to the list. That is why `CGRequestScreenCaptureAccess` is called directly.
 - **`getMediaAccessStatus('screen')`** reports `denied` both before and after the user declines, so "not asked yet" cannot be told apart.
 - Screen Recording usually takes effect only after a relaunch; the UI offers one.
-- Permissions are tied to the code signature. Ad-hoc signatures change on every build, so after a rebuild reset them (`tccutil reset …`, see the README).
+- Permissions are tied to the code signature. Ad-hoc signatures change on every build, so after a rebuild reset them (`tccutil reset …`, see [Troubleshooting](../README.md#troubleshooting)).
 
 ### Settings and Output folder
 

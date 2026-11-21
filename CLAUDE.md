@@ -1,6 +1,6 @@
 # tuto-record: instructions for Claude
 
-An Electron + TypeScript macOS app that saves a screenshot of every display on each left click. Start with [README.md](README.md) for what it does and how to run it, and with [GLOSSARY.md](GLOSSARY.md) for the vocabulary (Recording, Click, Capture, Screenshot, Marker, Output folder). Use those terms in code, comments, UI text and docs.
+An Electron + TypeScript macOS app that saves a screenshot of every display on each left click. Start with [README.md](README.md) for what it does, [src/README.md](src/README.md) for how to build and run it, and with [GLOSSARY.md](GLOSSARY.md) for the vocabulary (Recording, Click, Capture, Screenshot, Marker, Output folder). Use those terms in code, comments, UI text and docs.
 
 ## Documentation rule
 
@@ -16,13 +16,14 @@ Documentation is part of the change. It is not a follow-up task.
 
 Related documents, each with one job:
 
-| Document                   | Holds                                                               |
-| -------------------------- | ------------------------------------------------------------------- |
-| [README.md](README.md)     | What the app is, status, how to run, install, troubleshoot          |
-| [GLOSSARY.md](GLOSSARY.md) | Domain terms only. No implementation details                        |
-| [docs/adr/](docs/adr/)     | Decisions that are hard to reverse, surprising and a real trade-off |
-| [plans/](plans/)           | Plans and their progress notes                                      |
-| `**/README.md`             | How the code in that folder works (see the rule above)              |
+| Document                       | Holds                                                               |
+| ------------------------------ | ------------------------------------------------------------------- |
+| [README.md](README.md)         | How the app works, from the user's side. Nothing about development  |
+| [src/README.md](src/README.md) | Install, setup, run, scripts, build, troubleshooting, source layout |
+| [GLOSSARY.md](GLOSSARY.md)     | Domain terms only. No implementation details                        |
+| [docs/adr/](docs/adr/)         | Decisions that are hard to reverse, surprising and a real trade-off |
+| [plans/](plans/)               | Plans and their progress notes                                      |
+| `**/README.md`                 | How the code in that folder works (see the rule above)              |
 
 ## Code conventions
 
@@ -32,8 +33,8 @@ Related documents, each with one job:
 
 ## Things that are easy to get wrong
 
-- **Test permissions only with the packaged app.** `npm run dev` runs the stock Electron app, which can inherit permissions from whatever launched it. See the README.
+- **Test permissions only with the packaged app.** `npm run dev` runs the stock Electron app, which can inherit permissions from whatever launched it. See [src/README.md](src/README.md#run).
 - **Launch the app through `open`** (for example `open -n --env TUTO_DEBUG=1 …`), not by running the binary directly, or macOS attributes permissions to your shell.
-- **Builds are ad-hoc signed, so every rebuild invalidates permissions.** Reset them with `tccutil` and grant again. The README has the commands.
-- **This Mac's Node runs as x64 (Rosetta).** The arm64 app needs the arm64 binaries of `sharp`, `koffi` and Electron installed by hand. The README has the commands.
+- **Builds are ad-hoc signed, so every rebuild invalidates permissions.** Reset them with `tccutil` and grant again. [src/README.md](src/README.md#troubleshooting) has the commands.
+- **This Mac's Node runs as x64 (Rosetta).** The arm64 app needs the arm64 binaries of `sharp`, `koffi` and Electron installed by hand. [src/README.md](src/README.md#setup) has the commands.
 - Do not commit screenshots or the test output folder (`firsttuto/` is ignored).

@@ -84,7 +84,7 @@ Settings deep links (via `shell.openExternal`):
   ```bash
   tccutil reset ScreenCapture com.tuto-record.app
   ```
-- macOS 15+ shows recurring "allow screen recording" reminders. This is expected; mention it in the README.
+- macOS 15+ shows recurring "allow screen recording" reminders. This is expected; mentioned in the project README.
 
 ---
 
