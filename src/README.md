@@ -33,15 +33,14 @@ Using an arm64 Node avoids both steps.
 
 ## Scripts
 
-| Command                | What it does                                                       |
-| ---------------------- | ------------------------------------------------------------------ |
-| `npm run dev`          | Start in development mode                                          |
-| `npm run build:unpack` | Build `dist/mac-arm64/tuto-record.app`                             |
-| `npm run build:mac`    | Build the `.app` and a `.dmg`                                      |
-| `npm run typecheck`    | Type-check main, preload and renderer                              |
-| `npm run lint`         | ESLint and Prettier                                                |
-| `npm run icons`        | Regenerate the app icons from `build/logo-source.jpg` (macOS only) |
-| `npm test`             | Unit tests (Vitest)                                                |
+| Command                | What it does                           |
+| ---------------------- | -------------------------------------- |
+| `npm run dev`          | Start in development mode              |
+| `npm run build:unpack` | Build `dist/mac-arm64/tuto-record.app` |
+| `npm run build:mac`    | Build the `.app` and a `.dmg`          |
+| `npm run typecheck`    | Type-check main, preload and renderer  |
+| `npm run lint`         | ESLint and Prettier                    |
+| `npm test`             | Unit tests (Vitest)                    |
 
 ## Run
 
