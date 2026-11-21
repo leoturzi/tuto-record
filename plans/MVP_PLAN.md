@@ -5,8 +5,8 @@ A desktop app that saves a Screenshot of every display each time the user Clicks
 - **Framework:** Electron
 - **Language:** TypeScript
 - **Platform (v0.1):** macOS only (dev machine: macOS 14.5, Node 20). Windows comes later (see §11).
-- **Vocabulary:** terms in **bold capitals** (Recording, Click, Capture, Screenshot, Marker, Output folder) are defined in [GLOSSARY.md](GLOSSARY.md).
-- **Decisions:** [docs/adr/](docs/adr/)
+- **Vocabulary:** terms in **bold capitals** (Recording, Click, Capture, Screenshot, Marker, Output folder) are defined in [GLOSSARY.md](../GLOSSARY.md).
+- **Decisions:** [docs/adr/](../docs/adr/)
 
 ---
 
@@ -19,7 +19,7 @@ A desktop app that saves a Screenshot of every display each time the user Clicks
 | D3 | Click | **Left button only**, fires on press (mouse down). Middle/right buttons and scrolling are ignored |
 | D4 | Rapid clicks | Clicks less than **300 ms** apart collapse into one Capture (a double-click gives one Capture) |
 | D5 | What is captured | **All displays**: one Screenshot per display for each Click, at native resolution |
-| D6 | Timing | Screenshots are taken **just after** the Click (~100–300 ms later). See [ADR 0001](docs/adr/0001-capture-just-after-click.md) |
+| D6 | Timing | Screenshots are taken **just after** the Click (~100–300 ms later). See [ADR 0001](../docs/adr/0001-capture-just-after-click.md) |
 | D7 | Marker | A red ring plus an arrow cursor (tip at the Click position, ring centred on the arrow so it looks centred), drawn only on the clicked display's Screenshot. The screen capture does not include the real pointer, so the cursor is always an arrow, whatever the real pointer looked like |
 | D8 | Format | PNG |
 | D9 | Files | Saved directly in the Output folder (no subfolders), named `YYYY-MM-DD_HH-mm-ss-SSS_d<N>.png`, using the Click time |
@@ -163,7 +163,7 @@ The plan first also required the Click to lie outside the display's `workArea`. 
 ```
 tuto-record/
 ├─ GLOSSARY.md
-├─ MVP_PLAN.md
+├─ plans/MVP_PLAN.md
 ├─ docs/adr/
 ├─ package.json
 ├─ electron.vite.config.ts
@@ -283,7 +283,7 @@ Each one ends with something you can run and check.
 | Permissions lost after a rebuild (signature change) | Ad-hoc signatures change on every build: reset and re-grant after each rebuild (`tccutil` commands documented). A stable self-signed certificate avoids this but needs a one-time keychain "Always Allow"; revisit in M6 |
 | `uiohook-napi` / `sharp` binaries missing from the packaged app | M0 packaging spike; `asarUnpack` |
 | Screen Recording needs a restart | Relaunch button |
-| Screenshots show the screen just after the Click | Accepted for v0.1 ([ADR 0001](docs/adr/0001-capture-just-after-click.md)) |
+| Screenshots show the screen just after the Click | Accepted for v0.1 ([ADR 0001](../docs/adr/0001-capture-just-after-click.md)) |
 | Mixed displays: thumbnails upscaled or Marker off by a scale factor | Resize to native size; unit-test Marker maths; test on 2 displays |
 | Capturing all displays at Retina size is slow or large (several MB per Click) | Parallel writes; measure in M4; JPEG or "clicked display only" remain options for later |
 | Shortcut already used by another app | `globalShortcut.register` returns false → show a warning in the window; Start/Stop button still works |

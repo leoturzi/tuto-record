@@ -79,6 +79,9 @@ app.whenReady().then(() => {
   })
 
   const permissions = createElectronPermissionService()
+  if (process.env['TUTO_DEBUG'] === '1') {
+    console.log(`PERMISSIONS ${JSON.stringify(permissions.getStatus())} exe=${process.execPath}`)
+  }
   const settings = createSettingsService(join(app.getPath('userData'), 'settings.json'))
 
   const capturer = createElectronCapturer(settings)

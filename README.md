@@ -2,7 +2,7 @@
 
 A macOS desktop app (Electron + TypeScript) that saves a screenshot of every display each time you click, so the clicks can later be turned into a step-by-step tutorial.
 
-See [MVP_PLAN.md](MVP_PLAN.md) for the plan, [GLOSSARY.md](GLOSSARY.md) for the vocabulary and [docs/adr](docs/adr) for decisions.
+See [plans/MVP_PLAN.md](plans/MVP_PLAN.md) for the plan, [GLOSSARY.md](GLOSSARY.md) for the vocabulary, [docs/adr](docs/adr) for decisions and [src/main/README.md](src/main/README.md) for how the main process modules work.
 
 ## Status
 
@@ -18,6 +18,20 @@ See [MVP_PLAN.md](MVP_PLAN.md) for the plan, [GLOSSARY.md](GLOSSARY.md) for the 
 
 Right now the app checks and requests the two macOS permissions it needs, lets you choose the folder for screenshots, and and records: every left click saves one PNG per display into the folder (Start button or **⌃⌥⌘R**; stop with **⌃⌥⌘R** or a Dock icon click). The screenshot of the display you clicked gets a red ring and a cursor arrow at the click position.
 
+## Where things are
+
+| Folder | What it is |
+|---|---|
+| [`src/main`](src/main/README.md) | The main process: permissions, click hook, capture, files, recorder state machine |
+| [`src/renderer`](src/renderer/README.md) | The window's user interface |
+| [`src/preload`](src/preload/README.md) | The bridge that exposes `window.api` to the renderer |
+| [`src/shared`](src/shared/README.md) | The IPC contract (channels and types) used by all three |
+| [`plans`](plans/MVP_PLAN.md) | The MVP plan and its progress notes |
+| [`docs/adr`](docs/adr) | Decision records |
+| `tests` | Unit tests (Vitest); each folder README says which test covers which module |
+
+Each folder's README documents that folder only. See [CLAUDE.md](CLAUDE.md) for the documentation rule.
+
 ## Run the app
 
 Run the packaged app. It appears as **tuto-record** in System Settings → Privacy & Security:
@@ -32,7 +46,7 @@ After changing code, rebuild it first:
 npm run build:unpack
 ```
 
-Dev mode is quicker for editing, but macOS lists it as **Electron**, not tuto-record:
+Dev mode is quicker for editing, but it is not the real app: it runs the stock **Electron** app (bundle ID `com.github.Electron`), never tuto-record's permissions, and macOS attributes its permissions to whatever launched it. If your terminal or IDE already has Accessibility and Screen Recording, the dev app inherits them, shows no prompts and may not appear in the lists at all. Test permissions with the packaged app:
 
 ```bash
 npm run dev
