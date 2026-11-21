@@ -1,6 +1,6 @@
 # tuto-record: instructions for Claude
 
-An Electron + TypeScript macOS app that saves a screenshot of every display on each left click. Start with [README.md](README.md) for what it does, [src/README.md](src/README.md) for how to build and run it, and with [GLOSSARY.md](GLOSSARY.md) for the vocabulary (Recording, Click, Capture, Screenshot, Marker, Output folder). Use those terms in code, comments, UI text and docs.
+An Electron + TypeScript macOS app that saves a screenshot of every display on each left click. Start with [README.md](README.md) for what it does, [src/README.md](src/README.md) for how to build and run it, and with [GLOSSARY.md](GLOSSARY.md) for the vocabulary (Projects folder, Project, Tutorial, Recording, Click, Capture, Screenshot, Marker). Use those terms in code, comments, UI text and docs.
 
 ## Documentation rule
 

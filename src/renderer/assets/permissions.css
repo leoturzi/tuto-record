@@ -1,0 +1,46 @@
+/* Settings window: the permission panel. */
+
+.perm {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.perm h3 {
+  font-size: 14px;
+}
+
+.perm-text p {
+  color: var(--muted);
+}
+
+.badge {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge.ok {
+  color: var(--ok);
+}
+
+.badge.missing {
+  color: var(--warn);
+}
+
+#relaunch-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+#permissions-ready {
+  margin-top: 6px;
+}

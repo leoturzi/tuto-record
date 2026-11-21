@@ -1,8 +1,7 @@
-import { app, BrowserWindow, Notification } from 'electron'
+import { app, Notification, shell } from 'electron'
 import { IPC, type RecorderPhase } from '../shared/ipc'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import icon from '../../resources/icon.png?asset'
 import macIcon from '../../resources/icon-mac.png?asset'
 import { registerIpc } from './ipc'
 import { createSettingsService } from './settings'
@@ -10,72 +9,20 @@ import { createElectronPermissionService } from './permissionsElectron'
 import { createClickListener } from './clickListener'
 import { createElectronCapturer, removeFile } from './captureElectron'
 import { createRecorder } from './recorder'
-import { registerToggleShortcut, unregisterShortcuts } from './shortcut'
+import { registerStopShortcut, unregisterShortcuts } from './shortcut'
+import { createWindows } from './windows'
+import { installMenu } from './menu'
+import { confirm } from './confirmElectron'
+import { createProjectsService } from './projects'
+import { createTutorialRecording } from './tutorialRecording'
+import { handleImages, registerImageScheme } from './imageProtocol'
 
-// In dev mode the title says so, to tell it apart from the installed app.
-const WINDOW_TITLE = is.dev ? 'Tuto-Record (Development)' : 'Tuto-Record'
+// Must happen before the app is ready.
+registerImageScheme()
 
-let mainWindow: BrowserWindow | null = null
+const debug = process.env['TUTO_DEBUG'] === '1'
 
-function createWindow(): void {
-  // Create the browser window.
-  const window = new BrowserWindow({
-    width: 560,
-    height: 860,
-    title: WINDOW_TITLE,
-    show: false,
-    autoHideMenuBar: true,
-    // macOS takes the icon from the app bundle; the other platforms need it on the window.
-    ...(process.platform !== 'darwin' ? { icon } : {}),
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true
-    }
-  })
-
-  // The page's own <title> would otherwise replace the dev title once it loads.
-  if (is.dev) window.on('page-title-updated', (event) => event.preventDefault())
-
-  mainWindow = window
-  window.on('closed', () => {
-    if (mainWindow === window) mainWindow = null
-  })
-
-  window.on('ready-to-show', () => {
-    window.show()
-  })
-
-  // The UI has no links; never let it open new windows.
-  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
-
-  // HMR for renderer base on electron-vite cli.
-  // Load the remote URL for development or the local html file for production.
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    window.loadURL(process.env['ELECTRON_RENDERER_URL'])
-  } else {
-    window.loadFile(join(__dirname, '../renderer/index.html'))
-  }
-}
-
-function showMainWindow(): void {
-  if (!mainWindow || mainWindow.isDestroyed()) {
-    createWindow()
-    return
-  }
-  mainWindow.show()
-  mainWindow.focus()
-}
-
-function sendToWindow(channel: string, payload: unknown): void {
-  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload)
-}
-
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // In dev mode the Dock would show Electron's icon; packaged builds use build/icon.icns.
   if (is.dev) app.dock?.setIcon(macIcon)
 
@@ -89,30 +36,46 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  const windows = createWindows()
+  installMenu(windows.openSettings)
+
   const permissions = createElectronPermissionService()
-  if (process.env['TUTO_DEBUG'] === '1') {
+  if (debug) {
     console.log(`PERMISSIONS ${JSON.stringify(permissions.getStatus())} exe=${process.execPath}`)
   }
   const settings = createSettingsService(join(app.getPath('userData'), 'settings.json'))
+  const projects = createProjectsService({
+    getRoot: async () => {
+      const state = await settings.get()
+      if (!state.projectsFolder) throw new Error('No Projects folder is chosen.')
+      if (state.projectsFolderProblem) throw new Error(state.projectsFolderProblem)
+      return state.projectsFolder
+    },
+    trash: (path) => shell.trashItem(path)
+  })
+  handleImages(projects)
 
-  const capturer = createElectronCapturer(settings)
+  const capturer = createElectronCapturer(settings, projects)
   let previousPhase: RecorderPhase = 'idle'
 
+  const tutorialRecording = createTutorialRecording({
+    permissionsGranted: () => permissions.getStatus().allGranted,
+    getSettings: () => settings.get(),
+    countImages: async (ref) => (await projects.listImages(ref)).length,
+    trashAllImages: (ref) => projects.trashAllImages(ref),
+    confirm,
+    startRecorder: () => recorder.start()
+  })
+
   const recorder = createRecorder({
-    checkReady: async () => {
-      if (!permissions.getStatus().allGranted) return 'Grant both permissions first.'
-      const state = await settings.get()
-      if (!state.outputFolder) return 'Choose an output folder first.'
-      return state.outputFolderProblem
-    },
+    checkReady: () => tutorialRecording.checkReady(),
     clicks: createClickListener(),
-    hideWindow: () => mainWindow?.hide(),
-    showWindow: showMainWindow,
+    hideWindow: () => windows.hideAll(),
+    showWindow: () => windows.showMain(),
     setBadge: (text) => app.dock?.setBadge(text),
     capture: async (click) => {
       const files = await capturer(click)
-      if (process.env['TUTO_DEBUG'] === '1')
-        console.log(`CAPTURE ${click.x},${click.y} ${files.join(' ')}`)
+      if (debug) console.log(`CAPTURE ${click.x},${click.y} ${files.join(' ')}`)
       return files
     },
     deleteFiles: async (paths) => {
@@ -120,17 +83,31 @@ app.whenReady().then(() => {
     },
     now: () => Date.now(),
     onChange: (status) => {
-      sendToWindow(IPC.recorderState, status)
+      windows.sendToMain(IPC.recorderState, status)
       if (status.error && previousPhase === 'recording' && status.phase === 'idle') {
         new Notification({ title: 'tuto-record stopped recording', body: status.error }).show()
       }
       previousPhase = status.phase
     }
   })
-  registerIpc(permissions, settings, recorder)
-  recorder.setShortcutOk(registerToggleShortcut(() => void recorder.toggle()))
+  registerIpc({
+    permissions,
+    settings,
+    projects,
+    recorder,
+    tutorialRecording,
+    confirm,
+    openSettings: windows.openSettings
+  })
+  recorder.setShortcutOk(registerStopShortcut(() => recorder.handleShortcut()))
 
-  createWindow()
+  windows.showMain()
+
+  // Settings opens by itself while something needed for recording is missing.
+  const state = await settings.get()
+  if (!permissions.getStatus().allGranted || !state.projectsFolder || state.projectsFolderProblem) {
+    windows.openSettings()
+  }
 
   // Shows the system prompts one after another, which also adds the app to the Privacy &
   // Security lists. Retries on a timer because the next prompt waits for the previous grant.
@@ -143,7 +120,7 @@ app.whenReady().then(() => {
 
   // A Dock icon click while recording stops the Recording; otherwise it just shows the window.
   app.on('activate', () => {
-    if (recorder.getStatus().phase === 'idle') showMainWindow()
+    if (recorder.getStatus().phase === 'idle') windows.showMain()
     else void recorder.handleDockActivate()
   })
 
@@ -159,6 +136,3 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.

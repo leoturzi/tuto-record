@@ -1,26 +1,70 @@
-import { mkdir, readFile, rename, writeFile } from 'fs/promises'
-import { dirname } from 'path'
-import type { SettingsState } from '../shared/ipc'
-import { checkOutputFolder } from './outputFolder'
+import { mkdir, readFile, rename, stat, writeFile } from 'fs/promises'
+import { dirname, join } from 'path'
+import type { SettingsState, TutorialRef } from '../shared/ipc'
+import { checkFolder } from './folderCheck'
 
 interface StoredSettings {
-  outputFolder: string | null
+  projectsFolder: string | null
+  selectedTutorial: TutorialRef | null
+  expandedProjects: string[]
 }
 
-const DEFAULTS: StoredSettings = { outputFolder: null }
+const defaults = (): StoredSettings => ({
+  projectsFolder: null,
+  selectedTutorial: null,
+  expandedProjects: []
+})
 
-/** Accepts anything that was read from disk and keeps only what is valid. */
+const isName = (value: unknown): value is string => typeof value === 'string' && value !== ''
+
+/** True when `value` has a non-empty `project` and `tutorial`. */
+export function isTutorialRef(value: unknown): value is TutorialRef {
+  if (typeof value !== 'object' || value === null) return false
+  const { project, tutorial } = value as Record<string, unknown>
+  return isName(project) && isName(tutorial)
+}
+
+/**
+ * Accepts anything that was read from disk and keeps only what is valid. Each field falls back on
+ * its own; a v0.1 file (`{ outputFolder }`) gives the defaults.
+ */
 export function parseSettings(raw: unknown): StoredSettings {
-  if (typeof raw !== 'object' || raw === null) return { ...DEFAULTS }
-  const { outputFolder } = raw as Record<string, unknown>
+  if (typeof raw !== 'object' || raw === null) return defaults()
+  const { projectsFolder, selectedTutorial, expandedProjects } = raw as Record<string, unknown>
   return {
-    outputFolder: typeof outputFolder === 'string' && outputFolder !== '' ? outputFolder : null
+    projectsFolder: isName(projectsFolder) ? projectsFolder : null,
+    selectedTutorial: isTutorialRef(selectedTutorial)
+      ? { project: selectedTutorial.project, tutorial: selectedTutorial.tutorial }
+      : null,
+    expandedProjects: Array.isArray(expandedProjects) ? expandedProjects.filter(isName) : []
   }
 }
 
 export interface SettingsService {
   get(): Promise<SettingsState>
-  setOutputFolder(folder: string): Promise<SettingsState>
+  /** Saves the folder and clears the selection and the expanded list. */
+  setProjectsFolder(folder: string): Promise<SettingsState>
+  selectTutorial(ref: TutorialRef | null): Promise<SettingsState>
+  setExpanded(projects: string[]): Promise<void>
+  /** Keeps the selection and the expanded list pointing at a renamed Project. */
+  followProjectRename(from: string, to: string): Promise<void>
+  /** Keeps the selection pointing at a renamed Tutorial. */
+  followTutorialRename(ref: TutorialRef, to: string): Promise<void>
+  /** Drops the selection and the expanded entry of a trashed Project. */
+  forgetProject(name: string): Promise<void>
+  /** Drops the selection of a trashed Tutorial. */
+  forgetTutorial(ref: TutorialRef): Promise<void>
+}
+
+const sameRef = (a: TutorialRef | null, b: TutorialRef): boolean =>
+  a !== null && a.project === b.project && a.tutorial === b.tutorial
+
+async function isDirectory(path: string): Promise<boolean> {
+  try {
+    return (await stat(path)).isDirectory()
+  } catch {
+    return false
+  }
 }
 
 /** Settings live in one small JSON file. A missing or corrupt file means defaults. */
@@ -29,7 +73,7 @@ export function createSettingsService(filePath: string): SettingsService {
     try {
       return parseSettings(JSON.parse(await readFile(filePath, 'utf8')))
     } catch {
-      return { ...DEFAULTS }
+      return defaults()
     }
   }
 
@@ -41,12 +85,23 @@ export function createSettingsService(filePath: string): SettingsService {
     await rename(tmp, filePath)
   }
 
+  async function update(change: (settings: StoredSettings) => StoredSettings): Promise<void> {
+    await save(change(await load()))
+  }
+
   async function toState(settings: StoredSettings): Promise<SettingsState> {
+    const { projectsFolder, selectedTutorial } = settings
+    const problem = projectsFolder ? await checkFolder(projectsFolder) : null
+    const selectionExists =
+      projectsFolder !== null &&
+      problem === null &&
+      selectedTutorial !== null &&
+      (await isDirectory(join(projectsFolder, selectedTutorial.project, selectedTutorial.tutorial)))
     return {
-      outputFolder: settings.outputFolder,
-      outputFolderProblem: settings.outputFolder
-        ? await checkOutputFolder(settings.outputFolder)
-        : null
+      projectsFolder,
+      projectsFolderProblem: problem,
+      selectedTutorial: selectionExists ? selectedTutorial : null,
+      expandedProjects: settings.expandedProjects
     }
   }
 
@@ -54,10 +109,56 @@ export function createSettingsService(filePath: string): SettingsService {
     async get() {
       return toState(await load())
     },
-    async setOutputFolder(folder) {
-      const settings = { ...(await load()), outputFolder: folder }
+
+    async setProjectsFolder(folder) {
+      const settings = { ...defaults(), projectsFolder: folder }
       await save(settings)
       return toState(settings)
+    },
+
+    async selectTutorial(ref) {
+      const settings = { ...(await load()), selectedTutorial: ref }
+      await save(settings)
+      return toState(settings)
+    },
+
+    async setExpanded(projects) {
+      await update((s) => ({ ...s, expandedProjects: [...new Set(projects)] }))
+    },
+
+    async followProjectRename(from, to) {
+      await update((s) => ({
+        ...s,
+        selectedTutorial:
+          s.selectedTutorial?.project === from
+            ? { project: to, tutorial: s.selectedTutorial.tutorial }
+            : s.selectedTutorial,
+        expandedProjects: s.expandedProjects.map((name) => (name === from ? to : name))
+      }))
+    },
+
+    async followTutorialRename(ref, to) {
+      await update((s) => ({
+        ...s,
+        selectedTutorial: sameRef(s.selectedTutorial, ref)
+          ? { project: ref.project, tutorial: to }
+          : s.selectedTutorial
+      }))
+    },
+
+    async forgetProject(name) {
+      await update((s) => ({
+        ...s,
+        selectedTutorial: s.selectedTutorial?.project === name ? null : s.selectedTutorial,
+        expandedProjects: s.expandedProjects.filter((p) => p !== name)
+      }))
+    },
+
+    async forgetTutorial(ref) {
+      await update((s) => ({
+        ...s,
+        selectedTutorial: sameRef(s.selectedTutorial, ref) ? null : s.selectedTutorial
+      }))
     }
   }
 }

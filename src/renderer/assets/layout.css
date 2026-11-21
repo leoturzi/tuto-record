@@ -1,0 +1,85 @@
+/* Main window: the sidebar on the left, the Tutorial pane on the right. */
+
+.app {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px 12px;
+}
+
+.pane-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pane-actions {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+
+.pane-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 24px;
+}
+
+.notice,
+.placeholder,
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.notice p {
+  max-width: 420px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.pane-footer {
+  display: grid;
+  gap: 4px;
+  padding: 12px 24px 16px;
+  border-top: 1px solid var(--border);
+  min-height: 46px;
+}
+
+.status {
+  color: var(--muted);
+}
+
+.status.ready {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+.summary {
+  font-weight: 600;
+}

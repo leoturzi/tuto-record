@@ -201,14 +201,31 @@ describe('stop', () => {
   })
 })
 
-describe('toggle and Dock click', () => {
-  it('toggle starts when idle and stops when running', async () => {
-    const { recorder } = setup()
-    await recorder.toggle()
+describe('shortcut and Dock click', () => {
+  it('the shortcut only shows the window when idle, and never starts', async () => {
+    const { recorder, deps } = setup()
+    recorder.handleShortcut()
     vi.advanceTimersByTime(START_DELAY_MS)
-    expect(recorder.getStatus().phase).toBe('recording')
-    await recorder.toggle()
     expect(recorder.getStatus().phase).toBe('idle')
+    expect(deps.showWindow).toHaveBeenCalledTimes(1)
+    expect(deps.checkReady).not.toHaveBeenCalled()
+  })
+
+  it('the shortcut stops a Recording', async () => {
+    const { recorder, deps, startAndWait } = setup()
+    await startAndWait()
+    recorder.handleShortcut()
+    expect(recorder.getStatus().phase).toBe('idle')
+    expect(deps.showWindow).toHaveBeenCalledTimes(1)
+  })
+
+  it('the shortcut stops a Recording that is still starting', async () => {
+    const { recorder, clicks } = setup()
+    await recorder.start()
+    recorder.handleShortcut()
+    vi.advanceTimersByTime(START_DELAY_MS)
+    expect(recorder.getStatus().phase).toBe('idle')
+    expect(clicks.start).not.toHaveBeenCalled()
   })
 
   it('a Dock click stops a Recording and shows the window', async () => {

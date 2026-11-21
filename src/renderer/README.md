@@ -1,39 +1,47 @@
 # Renderer (`src/renderer`)
 
-The window's user interface: plain TypeScript and HTML, no framework. It shows state and sends commands. It has no Node or Electron access and talks to the main process only through `window.api` ([contract](../shared/README.md), [bridge](../preload/README.md)).
+The user interface of both windows: plain TypeScript and HTML, no framework. It shows state and sends commands. It has no Node or Electron access and talks to the main process only through `window.api` ([contract](../shared/README.md), [bridge](../preload/README.md)). Main re-checks everything it is asked to do.
 
-## Layout
+## Pages
 
-| Path                                             | Role                                                                                                                                                                         |
-| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`index.html`](index.html)                       | The page: permission panel, Output folder section, Recording section, status line. Sets a strict Content-Security-Policy (`script-src 'self'`, no inline scripts or styles). |
-| [`assets/styles.css`](assets/styles.css)         | All styling. Colours are CSS variables, with a dark variant under `prefers-color-scheme`.                                                                                    |
-| [`src/renderer.ts`](src/renderer.ts)             | The only file that touches the DOM and `window.api`: fetches state, renders it, wires the buttons.                                                                           |
-| [`src/permissionView.ts`](src/permissionView.ts) | Pure: `PermissionsStatus` → what the permission panel shows (labels, relaunch hint, whether the panel or the ready message is shown).                                        |
-| [`src/status.ts`](src/status.ts)                 | Pure: permissions and settings → the status line, and `ready` (true when recording could start).                                                                             |
-| [`src/recorderView.ts`](src/recorderView.ts)     | Pure: `RecorderStatus` and `ready` → the Start/Stop button, summary, error and shortcut warning.                                                                             |
+| Path                             | Window                                                                             | Entry script                         |
+| -------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------ |
+| [`index.html`](index.html)       | Main window: the sidebar with the Projects tree, and the selected Tutorial's pane. | [`src/main.ts`](src/main.ts)         |
+| [`settings.html`](settings.html) | Settings window: the Projects folder and the permission panel.                     | [`src/settings.ts`](src/settings.ts) |
 
-## How it works
+Both are electron-vite inputs (`electron.vite.config.ts`). Each sets a strict Content-Security-Policy: `script-src 'self'`, `style-src 'self'`, no inline scripts or styles. The main window also allows `tuto-image:` in `img-src`, the scheme main serves the preview images on.
 
-- **Polling:** every 1.5 s `renderer.ts` fetches permissions and settings together and re-renders. That is how a permission granted in System Settings, or an Output folder deleted in Finder, shows up while the window is open.
-- **Push:** the recorder status arrives through `window.api.onRecorderStatus`, plus one `getRecorderStatus()` at start-up for the first render.
-- **Readiness:** the Start button is enabled only when `buildStatus(...).ready` is true (both permissions granted and the Output folder usable). This is a convenience: [main re-checks](../main/README.md#recorderts--the-state-machine) before it starts.
-- **Relaunch hint:** the renderer remembers whether Screen Recording was missing earlier in this run (`screenWasMissing`). If it becomes granted, it asks for a relaunch, because macOS usually applies that permission only after a restart.
-- **Screens:** the permission panel is hidden when everything is granted, and when the window comes back after a Recording it shows "Last recording: N captures".
+The entry scripts hold the state, poll main every 1.5 s, and wire the modules together. They contain no logic worth testing; that lives in the modules' view builders.
+
+## Modules
+
+Each folder is one part of the UI, with a pure, unit-tested view builder (data in, data out) and a thin DOM file. Its README has the details.
+
+| Folder                                                   | Part of the UI                                                                                                        |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| [`src/sidebar`](src/sidebar/README.md)                   | The Projects tree: expand and select, **+** to create, ⋯ to rename or trash, inline name fields, the Settings button. |
+| [`src/tutorial-preview`](src/tutorial-preview/README.md) | The heading, the large image and the horizontal thumbnail strip, ←/→, removing a Screenshot.                          |
+| [`src/recorder-bar`](src/recorder-bar/README.md)         | Start recording / Record again / Stop, Open in Finder, the status line and the recorder's messages.                   |
+| [`src/settings-window`](src/settings-window/README.md)   | The Projects folder section of the Settings window.                                                                   |
+| [`src/permissions`](src/permissions/README.md)           | The permission panel of the Settings window.                                                                          |
+| [`src/ui`](src/ui/README.md)                             | Small DOM helpers shared by the others.                                                                               |
+
+How they connect in the main window (`src/main.ts`): the sidebar selects a Tutorial (stored in main's settings); the preview and the recorder bar show that Tutorial; whether it is empty decides between Start and Record again. A finished Recording (`recorder:state` back to `idle`) reloads the images at once and selects the first.
+
+## Styles
+
+All styling is in [`assets/`](assets), linked from the HTML: `base.css` (colour tokens with a dark variant under `prefers-color-scheme`, buttons, messages) plus one file per area (`layout.css`, `sidebar.css`, `preview.css`, `recorder-bar.css`, `settings.css`, `permissions.css`). Icons are CSS masks over inline SVG data, so they take the text colour.
 
 ## Rules
 
-- **Logic goes in the pure view builders** (`permissionView.ts`, `status.ts`, `recorderView.ts`), which take data and return data and are unit-tested. Keep `renderer.ts` to DOM updates and event wiring.
+- **Logic goes in the pure view builders**, which take data and return data and are unit-tested. Keep the DOM files and the entry scripts to DOM updates and event wiring.
 - **Write text with `textContent`**, never `innerHTML`. Everything shown comes from main or from constants, but the habit keeps the CSP meaningful.
-- **No inline scripts or styles** (the CSP forbids them); add styles to `styles.css`.
+- **No inline scripts or styles** (the CSP forbids them).
+- **Never import CSS from TypeScript.** In dev, Vite injects imported CSS as `<style>` tags, which `style-src 'self'` blocks. Link the file from the HTML instead.
+- **Don't rebuild what the user is using.** The poll re-renders every 1.5 s; the DOM files reuse elements (the sidebar by row key, the strip only when the files change), so a name being typed, the caret and the strip's scroll position survive.
+- Keyboard shortcuts in the page (←/→, Delete) are ignored while a text field has focus.
 - A new field the UI needs goes through the shared contract first (see [Changing the contract](../shared/README.md#changing-the-contract)).
 
 ## Tests
 
-| Module              | Test file                                                            |
-| ------------------- | -------------------------------------------------------------------- |
-| `permissionView.ts` | [`tests/permissionView.test.ts`](../../tests/permissionView.test.ts) |
-| `status.ts`         | [`tests/status.test.ts`](../../tests/status.test.ts)                 |
-| `recorderView.ts`   | [`tests/recorderView.test.ts`](../../tests/recorderView.test.ts)     |
-
-`renderer.ts` and `index.html` are not unit-tested; they are covered by the manual checklist in [plans/MVP_PLAN.md](../../plans/MVP_PLAN.md).
+Each module README lists its tests. The DOM files, the entry scripts and the HTML are not unit-tested; they are covered by the manual checklist in [plans/V0.2.0_PLAN.md](../../plans/V0.2.0_PLAN.md#5-testing).

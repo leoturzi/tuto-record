@@ -1,4 +1,4 @@
-import type { PermissionsStatus, ScreenStatus } from '../../shared/ipc'
+import type { PermissionsStatus, ScreenStatus } from '../../../shared/ipc'
 
 export interface PermissionView {
   showPanel: boolean

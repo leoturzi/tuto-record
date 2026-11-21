@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPermissionView } from '../src/renderer/src/permissionView'
+import { buildPermissionView } from '../src/renderer/src/permissions/permissionView'
 import type { PermissionsStatus } from '../src/shared/ipc'
 
 const base: PermissionsStatus = {

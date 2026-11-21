@@ -35,7 +35,7 @@ function setup(overrides: Partial<CaptureDeps> = {}): {
     getDisplays: () => [display(10, 0)],
     getPrimaryDisplayId: () => 10,
     grab: vi.fn(async () => [{ displayId: '10', image: image(2880, 1800) }]),
-    getOutputFolder: async () => '/out',
+    getFolder: async () => '/out',
     drawMarker: vi.fn(async (png: Buffer) => Buffer.from(`${png.toString()}+marker`)),
     writeFile: vi.fn(async (path: string, data: Buffer) => {
       written.set(path, data.toString())
@@ -143,9 +143,9 @@ describe('createCapturer', () => {
     await expect(createCapturer(deps)(click)).rejects.toThrow(/Screen Recording/)
   })
 
-  it('fails when the Output folder cannot be used, without capturing', async () => {
+  it('fails when the Tutorial folder cannot be used, without capturing', async () => {
     const { deps } = setup({
-      getOutputFolder: async () => {
+      getFolder: async () => {
         throw new Error('The folder no longer exists.')
       }
     })

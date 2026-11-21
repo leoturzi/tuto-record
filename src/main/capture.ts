@@ -23,8 +23,8 @@ export interface CaptureDeps {
   getPrimaryDisplayId(): number
   /** Captures every display, each scaled to fit inside `maxSize`. */
   grab(maxSize: { width: number; height: number }): Promise<CapturedSource[]>
-  /** Resolves to the Output folder, or throws with a readable message if it cannot be used. */
-  getOutputFolder(): Promise<string>
+  /** Resolves to the folder for this Capture (the selected Tutorial's), or throws a readable message. */
+  getFolder(): Promise<string>
   /** Draws the Marker on a PNG and returns the new PNG. */
   drawMarker(png: Buffer, spec: MarkerSpec): Promise<Buffer>
   writeFile(path: string, data: Buffer): Promise<void>
@@ -33,12 +33,13 @@ export interface CaptureDeps {
 
 /**
  * Builds the function that turns one Click into a Capture: one PNG per display, saved in the
- * Output folder, with a Marker on the display that was clicked. Resolves to the saved file paths. If any display fails, the files already
- * written for this Capture are removed and the error is thrown.
+ * selected Tutorial's folder, with a Marker on the display that was clicked. Resolves to the saved
+ * file paths. If any display fails, the files already written for this Capture are removed and the
+ * error is thrown.
  */
 export function createCapturer(deps: CaptureDeps): (click: ClickEvent) => Promise<string[]> {
   return async (click) => {
-    const folder = await deps.getOutputFolder()
+    const folder = await deps.getFolder()
     const displays = deps.getDisplays()
     const numbers = numberDisplays(displays, deps.getPrimaryDisplayId())
     const clicked = findDisplayAt(displays, click.x, click.y)

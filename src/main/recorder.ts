@@ -12,7 +12,9 @@ export interface RecorderDeps {
   /** Resolves to null when recording may start, or to a message saying why not. */
   checkReady(): Promise<string | null>
   clicks: ClickSource
+  /** Hides every app window, so none of them appears in a Screenshot. */
   hideWindow(): void
+  /** Brings the main window back. */
   showWindow(): void
   /** Sets the Dock badge text; an empty string clears it. */
   setBadge(text: string): void
@@ -29,8 +31,8 @@ export interface Recorder {
   start(): Promise<void>
   /** Stops Recording and brings the window back. Does nothing when idle. */
   stop(error?: string): void
-  /** Starts when idle, otherwise stops. */
-  toggle(): Promise<void>
+  /** The Stop shortcut: stops a Recording; when idle it only brings the window back. */
+  handleShortcut(): void
   /**
    * The user clicked the Dock icon: stop if recording. The Dock click itself was counted as a
    * Click, so if it was the latest one its Capture is deleted first.
@@ -125,8 +127,8 @@ export function createRecorder(deps: RecorderDeps): Recorder {
 
     stop,
 
-    async toggle() {
-      if (status.phase === 'idle') await start()
+    handleShortcut() {
+      if (status.phase === 'idle') deps.showWindow()
       else stop()
     },
 

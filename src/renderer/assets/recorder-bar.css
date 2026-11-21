@@ -1,0 +1,21 @@
+/* The empty Tutorial's Start button and hint. Header and footer buttons use base.css. */
+
+.empty-state h2 {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.empty-state > p:first-of-type {
+  font-size: 16px;
+}
+
+button.large {
+  padding: 12px 28px;
+  font-size: 17px;
+  border-radius: 12px;
+}
+
+.empty-state .hint {
+  max-width: 460px;
+}

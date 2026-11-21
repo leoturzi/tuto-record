@@ -5,75 +5,86 @@
     <title>Tuto-Record</title>
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: tuto-image:"
     />
-    <link href="./assets/styles.css" rel="stylesheet" />
+    <link href="./assets/base.css" rel="stylesheet" />
+    <link href="./assets/layout.css" rel="stylesheet" />
+    <link href="./assets/sidebar.css" rel="stylesheet" />
+    <link href="./assets/preview.css" rel="stylesheet" />
+    <link href="./assets/recorder-bar.css" rel="stylesheet" />
   </head>
 
   <body>
-    <main>
-      <h1>tuto-record</h1>
-      <p class="lead">Saves a screenshot of every display each time you click.</p>
+    <div class="app">
+      <aside id="sidebar" class="sidebar">
+        <header class="sidebar-header">
+          <h2>Projects</h2>
+          <button
+            type="button"
+            id="new-project"
+            class="icon-button"
+            title="New Project"
+            aria-label="New Project"
+          >
+            +
+          </button>
+        </header>
+        <ul id="tree" class="tree" role="tree" aria-label="Projects"></ul>
+        <p id="sidebar-empty" class="sidebar-empty" hidden></p>
+        <footer class="sidebar-footer">
+          <button type="button" id="open-settings" class="settings-button" title="Settings (⌘,)">
+            <span aria-hidden="true">⚙︎</span> Settings
+          </button>
+        </footer>
+      </aside>
 
-      <section id="permissions" hidden>
-        <h2>Permissions</h2>
-        <p class="hint">
-          tuto-record needs both permissions below. macOS asked for them on launch.
-        </p>
-
-        <article class="perm" data-kind="accessibility">
-          <div class="perm-text">
-            <h3>Accessibility</h3>
-            <p>Lets tuto-record notice your clicks in any app.</p>
+      <section id="pane" class="pane">
+        <header class="pane-header">
+          <h1 id="heading"></h1>
+          <div class="pane-actions">
+            <button type="button" id="open-tutorial" hidden>Open in Finder</button>
+            <button type="button" id="header-action" class="primary" hidden></button>
           </div>
-          <span class="badge" data-role="badge"></span>
-          <button type="button" data-role="open">Open Settings</button>
-        </article>
+        </header>
 
-        <article class="perm" data-kind="screen">
-          <div class="perm-text">
-            <h3>Screen Recording</h3>
-            <p>Lets tuto-record take the screenshots.</p>
+        <div class="pane-body">
+          <div id="notice" class="notice" hidden>
+            <p id="notice-text"></p>
+            <button type="button" id="notice-settings" class="primary">Open Settings</button>
           </div>
-          <span class="badge" data-role="badge"></span>
-          <button type="button" data-role="open">Open Settings</button>
-        </article>
 
-        <div id="relaunch-box" hidden>
-          <p id="relaunch-hint"></p>
-          <button type="button" id="relaunch">Relaunch app</button>
+          <div id="placeholder" class="placeholder" hidden>
+            <p>Select a Tutorial in the sidebar, or create one with +.</p>
+          </div>
+
+          <div id="empty-state" class="empty-state" hidden>
+            <h2>No screenshots yet</h2>
+            <p>Start recording to add screenshots.</p>
+            <button type="button" id="start" class="primary large"></button>
+            <p class="hint">
+              Each left click saves one screenshot per display. The window hides while recording.
+              Stop with <strong>⌃⌥⌘R</strong> or by clicking the Dock icon.
+            </p>
+          </div>
+
+          <div id="preview" class="preview" hidden>
+            <div class="large-view">
+              <img id="large-image" alt="" draggable="false" />
+            </div>
+            <div id="strip" class="strip" role="listbox" aria-label="Screenshots"></div>
+          </div>
         </div>
+
+        <footer class="pane-footer">
+          <p id="status" class="status"></p>
+          <p id="problem" class="problem" hidden></p>
+          <p id="recorder-summary" class="summary" hidden></p>
+          <p id="recorder-error" class="problem" hidden></p>
+          <p id="shortcut-warning" class="problem" hidden></p>
+        </footer>
       </section>
+    </div>
 
-      <section id="output">
-        <h2>Output folder</h2>
-        <p class="hint">Screenshots are saved directly in this folder.</p>
-        <article class="folder">
-          <p id="folder-path" class="path"></p>
-          <div class="folder-actions">
-            <button type="button" id="choose-folder">Choose folder…</button>
-            <button type="button" id="open-folder" hidden>Open folder</button>
-          </div>
-          <p id="folder-problem" class="problem" hidden></p>
-        </article>
-      </section>
-
-      <section id="recorder">
-        <h2>Recording</h2>
-        <p class="hint">
-          Each left click saves one screenshot per display. The window hides while recording. Stop
-          with
-          <strong>⌃⌥⌘R</strong> or by clicking the Dock icon.
-        </p>
-        <button type="button" id="record" class="primary" disabled>Start recording</button>
-        <p id="recorder-summary" class="summary" hidden></p>
-        <p id="recorder-error" class="problem" hidden></p>
-        <p id="shortcut-warning" class="problem" hidden></p>
-      </section>
-
-      <p id="status" class="status" hidden></p>
-    </main>
-
-    <script type="module" src="./src/renderer.ts"></script>
+    <script type="module" src="./src/main.ts"></script>
   </body>
 </html>

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Settings</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:"
+    />
+    <link href="./assets/base.css" rel="stylesheet" />
+    <link href="./assets/settings.css" rel="stylesheet" />
+    <link href="./assets/permissions.css" rel="stylesheet" />
+  </head>
+
+  <body>
+    <main class="settings">
+      <section id="folder-section">
+        <h2>Projects folder</h2>
+        <p class="hint">
+          Every Project is a folder inside this one, and every Tutorial a folder inside its Project.
+        </p>
+        <article class="folder">
+          <p id="folder-path" class="path"></p>
+          <div class="folder-actions">
+            <button type="button" id="choose-folder">Choose folder…</button>
+            <button type="button" id="open-folder" hidden>Open in Finder</button>
+          </div>
+          <p id="folder-problem" class="problem" hidden></p>
+        </article>
+      </section>
+
+      <section id="permissions">
+        <h2>Permissions</h2>
+        <p class="hint">tuto-record needs both permissions below. macOS asks for them on launch.</p>
+
+        <article class="perm" data-kind="accessibility">
+          <div class="perm-text">
+            <h3>Accessibility</h3>
+            <p>Lets tuto-record notice your clicks in any app.</p>
+          </div>
+          <span class="badge" data-role="badge"></span>
+          <button type="button" data-role="open">Open Settings</button>
+        </article>
+
+        <article class="perm" data-kind="screen">
+          <div class="perm-text">
+            <h3>Screen Recording</h3>
+            <p>Lets tuto-record take the screenshots.</p>
+          </div>
+          <span class="badge" data-role="badge"></span>
+          <button type="button" data-role="open">Open Settings</button>
+        </article>
+
+        <div id="relaunch-box" hidden>
+          <p id="relaunch-hint"></p>
+          <button type="button" id="relaunch" class="primary">Relaunch app</button>
+        </div>
+        <p id="permissions-ready" class="ready" hidden></p>
+      </section>
+    </main>
+
+    <script type="module" src="./src/settings.ts"></script>
+  </body>
+</html>

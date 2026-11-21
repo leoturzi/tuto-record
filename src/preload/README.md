@@ -11,7 +11,7 @@ The only bridge between the sandboxed renderer and the main process. It exposes 
 
 - Each method is a one-line call to `ipcRenderer.invoke(IPC.<channel>, …)`. The channels, payloads and responses are in the [shared contract](../shared/README.md).
 - **`onRecorderStatus(listener)`** subscribes to the `recorder:state` push. It wraps the listener so Electron's event object never reaches the renderer, and it returns a function that removes the subscription.
-- The window is created with `contextIsolation: true`, `nodeIntegration: false` and `sandbox: true` (set in [`src/main/index.ts`](../main/README.md)).
+- Both windows are created with `contextIsolation: true`, `nodeIntegration: false` and `sandbox: true` (set in [`src/main/windows.ts`](../main/README.md#windowsts--the-two-windows)).
 
 ## Rules
 

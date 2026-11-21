@@ -1,8 +1,8 @@
-import { mkdir, rm, writeFile } from 'fs/promises'
-import { dirname } from 'path'
+import { rm, writeFile } from 'fs/promises'
 import { desktopCapturer, screen, type NativeImage } from 'electron'
 import { createCapturer, type ImageLike } from './capture'
 import { drawMarker } from './marker'
+import type { ProjectsService } from './projects'
 import type { SettingsService } from './settings'
 
 function wrap(image: NativeImage): ImageLike {
@@ -19,7 +19,8 @@ function wrap(image: NativeImage): ImageLike {
 export const removeFile = (path: string): Promise<void> => rm(path, { force: true })
 
 export function createElectronCapturer(
-  settings: SettingsService
+  settings: SettingsService,
+  projects: ProjectsService
 ): ReturnType<typeof createCapturer> {
   return createCapturer({
     getDisplays: () =>
@@ -34,17 +35,17 @@ export function createElectronCapturer(
       })
       return sources.map((s) => ({ displayId: s.display_id, image: wrap(s.thumbnail) }))
     },
-    getOutputFolder: async () => {
+    // Resolved for every Capture, so a Tutorial renamed or deleted in Finder mid-Recording
+    // fails the next Capture (and stops the Recording) instead of saving somewhere else.
+    getFolder: async () => {
       const state = await settings.get()
-      if (!state.outputFolder) throw new Error('No output folder is chosen.')
-      if (state.outputFolderProblem) throw new Error(state.outputFolderProblem)
-      return state.outputFolder
+      if (state.projectsFolderProblem) throw new Error(state.projectsFolderProblem)
+      if (!state.selectedTutorial) throw new Error('The selected Tutorial no longer exists.')
+      return projects.tutorialPath(state.selectedTutorial)
     },
     drawMarker,
-    writeFile: async (path, data) => {
-      await mkdir(dirname(path), { recursive: true })
-      await writeFile(path, data)
-    },
+    // No mkdir: the folder was just checked, and re-creating a Tutorial the user deleted would be wrong.
+    writeFile: (path, data) => writeFile(path, data),
     removeFile
   })
 }
