@@ -33,7 +33,7 @@ describe('parseImageUrl', () => {
     'tuto-image://huge/a/b/c.png',
     'tuto-image://thumb/a/b',
     'tuto-image://thumb/a//c.png',
-    'tuto-image://thumb/a/..%2F..%2Fetc/passwd',
+    'tuto-image://thumb/a/..%2F..%2Fetc/hosts',
     'tuto-image://thumb/%2E%2E/b/c.png',
     'tuto-image://thumb/a/b/..',
     'tuto-image://thumb/a/b/%E0%A4%A.png',
