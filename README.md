@@ -58,7 +58,8 @@ Each counted click is one **capture**: one PNG per connected display, saved in y
 | Document                              | What it covers                                                                              |
 | ------------------------------------- | ------------------------------------------------------------------------------------------- |
 | [Development guide](src/README.md)    | Installing, building, running in development, setup, troubleshooting, and the source layout |
-| [Glossary](GLOSSARY.md)               | The words this project uses (recording, click, capture, screenshot, marker, output folder)  |
+| [Glossary](GLOSSARY.md)               | The words this project uses (project, tutorial, recording, click, capture, screenshot, …)   |
 | [MVP plan](plans/MVP_PLAN.md)         | The plan for version 0.1 and its progress notes                                             |
+| [v0.2.0 plan](plans/V0.2.0_PLAN.md)   | The plan for version 0.2.0 (Projects, Tutorials, the new window) and its progress notes     |
 | [Decision records](docs/adr)          | Why the hard-to-reverse choices were made                                                   |
 | [Working rules for Claude](CLAUDE.md) | How Claude works in this project, including keeping the documentation up to date            |
