@@ -3,6 +3,7 @@ import { IPC, type RecorderPhase } from '../shared/ipc'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import macIcon from '../../resources/icon-mac.png?asset'
 import { registerIpc } from './ipc'
 import { createSettingsService } from './settings'
 import { createElectronPermissionService } from './permissionsElectron'
@@ -21,7 +22,8 @@ function createWindow(): void {
     title: 'tuto-record',
     show: false,
     autoHideMenuBar: true,
-    ...(process.platform === 'linux' ? { icon } : {}),
+    // macOS takes the icon from the app bundle; the other platforms need it on the window.
+    ...(process.platform !== 'darwin' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -68,6 +70,9 @@ function sendToWindow(channel: string, payload: unknown): void {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
+  // In dev mode the Dock would show Electron's icon; packaged builds use build/icon.icns.
+  if (is.dev) app.dock?.setIcon(macIcon)
+
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.tuto-record.app')
 

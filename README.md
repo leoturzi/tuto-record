@@ -1,3 +1,5 @@
+<p align="center"><img src="build/icon.png" alt="tuto-record logo" width="128"></p>
+
 # tuto-record
 
 A macOS app that saves a screenshot of every display each time you click, so your clicks can later be turned into a step-by-step tutorial. Press Start, use your computer as usual, press Stop: your folder is full of screenshots, one per display per click, with a red ring and a cursor arrow showing where you clicked.

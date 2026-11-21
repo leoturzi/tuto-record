@@ -37,6 +37,7 @@ Creates the services, registers IPC and the shortcut, owns the single `BrowserWi
 - Starts the permission onboarding timer (see `permissions.ts`).
 - Sends a macOS notification when a Recording ends with an error.
 - The window runs with `contextIsolation`, no Node integration and `sandbox: true`.
+- **Icons:** on Windows and Linux the window gets `resources/icon.png`; macOS takes the icon from the app bundle, except in dev mode, where `index.ts` sets the Dock icon to `resources/icon-mac.png`. Both come from the [build resources](../../build/README.md).
 
 ### `ipc.ts` — the renderer's door
 

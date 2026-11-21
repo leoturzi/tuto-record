@@ -11,7 +11,7 @@ How to build, install, run and troubleshoot tuto-record, and where the code live
 | [`preload`](preload/README.md)   | The bridge that exposes `window.api` to the renderer                              |
 | [`shared`](shared/README.md)     | The IPC contract (channels and types) used by all three                           |
 
-Unit tests are in `tests/` at the project root; each folder's README says which test covers which module. Each README documents its own folder only; the rule is in [CLAUDE.md](../CLAUDE.md).
+The app icons and signing resources are in [`../build`](../build/README.md) and [`../resources`](../resources/README.md). Unit tests are in `tests/` at the project root; each folder's README says which test covers which module. Each README documents its own folder only; the rule is in [CLAUDE.md](../CLAUDE.md).
 
 ## Setup
 
@@ -33,14 +33,15 @@ Using an arm64 Node avoids both steps.
 
 ## Scripts
 
-| Command                | What it does                           |
-| ---------------------- | -------------------------------------- |
-| `npm run dev`          | Start in development mode              |
-| `npm run build:unpack` | Build `dist/mac-arm64/tuto-record.app` |
-| `npm run build:mac`    | Build the `.app` and a `.dmg`          |
-| `npm run typecheck`    | Type-check main, preload and renderer  |
-| `npm run lint`         | ESLint and Prettier                    |
-| `npm test`             | Unit tests (Vitest)                    |
+| Command                | What it does                                                       |
+| ---------------------- | ------------------------------------------------------------------ |
+| `npm run dev`          | Start in development mode                                          |
+| `npm run build:unpack` | Build `dist/mac-arm64/tuto-record.app`                             |
+| `npm run build:mac`    | Build the `.app` and a `.dmg`                                      |
+| `npm run typecheck`    | Type-check main, preload and renderer                              |
+| `npm run lint`         | ESLint and Prettier                                                |
+| `npm run icons`        | Regenerate the app icons from `build/logo-source.jpg` (macOS only) |
+| `npm test`             | Unit tests (Vitest)                                                |
 
 ## Run
 
