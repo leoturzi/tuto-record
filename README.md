@@ -2,7 +2,7 @@
 
 # tuto-record
 
-A macOS app that saves a screenshot of every display each time you click, so your clicks can later be turned into a step-by-step tutorial. Press Start, use your computer as usual, press Stop: your folder is full of screenshots, one per display per click, with a red ring and a cursor arrow showing where you clicked.
+A macOS app that saves a screenshot of every display each time you click, so your clicks can later be turned into a step-by-step tutorial. Press Start, use your computer as usual, press Stop: your folder is full of screenshots, one per display per click, with a cursor arrow on a see-through red circle showing where you clicked.
 
 Version 0.1 runs on Apple Silicon Macs.
 
@@ -44,7 +44,7 @@ Each counted click is one **capture**: one PNG per connected display, saved in y
 
 - The name is the local time of the click, so the files sort in the order you clicked. `d1` is the main display and the others follow from left to right.
 - Each picture has the display's full pixel resolution, Retina included.
-- The picture of the display you clicked also has a **marker** on it: a red ring with a cursor arrow, whose tip is exactly where you clicked. Other displays get a plain screenshot.
+- The picture of the display you clicked also has a **marker** on it: a cursor arrow in the middle of a translucent red circle. The arrow's tip is exactly where you clicked, and the circle is see-through, so the text and buttons under it stay readable. Other displays get a plain screenshot.
 
 ## Good to know
 

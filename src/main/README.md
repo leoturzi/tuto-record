@@ -37,6 +37,7 @@ Creates the services, registers IPC and the shortcut, owns the single `BrowserWi
 - Starts the permission onboarding timer (see `permissions.ts`).
 - Sends a macOS notification when a Recording ends with an error.
 - The window runs with `contextIsolation`, no Node integration and `sandbox: true`.
+- **Window title:** `Tuto-Record`, or `Tuto-Record (Development)` in dev mode (`npm run dev`) so a dev window is not mistaken for the installed app. In dev, `index.ts` blocks the page from overwriting the title.
 - **Icons:** on Windows and Linux the window gets `resources/icon.png`; macOS takes the icon from the app bundle, except in dev mode, where `index.ts` sets the Dock icon to `resources/icon-mac.png`. Both come from the [build resources](../../build/README.md).
 
 ### `ipc.ts` — the renderer's door
@@ -108,7 +109,7 @@ How a Capture is made:
 - **Matching:** a source belongs to a display when `source.display_id === String(display.id)`.
 - **File names:** `YYYY-MM-DD_HH-mm-ss-SSS_d<N>.png`, local time of the Click. `d1` is the primary display; the others follow left to right, then top to bottom.
 - **All or nothing:** if any display fails (empty image, missing source, write error, Marker error), the files already written for that Capture are removed and the error is thrown.
-- **Marker:** only the clicked display's image gets one, a red ring with a white halo plus an arrow cursor. The cursor's tip is the Click position; the ring (24 pt radius, 4 pt stroke, multiplied by the scale factor) is centred on the arrow so the cursor looks centred in it. The real pointer is not in the screen capture, so the cursor is always an arrow. Coordinates: Click positions are global points; a display's `bounds` are in points and may be negative (displays left of or above the primary).
+- **Marker:** only the clicked display's image gets one, a translucent red circle plus an arrow cursor with a white outline. The cursor's tip is the Click position; the circle (24 pt radius multiplied by the scale factor, filled at `CIRCLE_OPACITY` = 0.3, no outline) is centred on the arrow so the cursor looks centred in it. The low opacity keeps text and controls under the circle readable. The real pointer is not in the screen capture, so the cursor is always an arrow. Coordinates: Click positions are global points; a display's `bounds` are in points and may be negative (displays left of or above the primary).
 - Displays are numbered and sized in `naming.ts`; `markerGeometry.ts` has no `sharp` import so it stays unit-testable.
 
 ### `shortcut.ts`

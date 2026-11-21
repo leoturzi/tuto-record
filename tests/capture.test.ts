@@ -87,8 +87,7 @@ describe('createCapturer', () => {
       scale: 1,
       cx: 100,
       cy: 300,
-      radius: 24,
-      stroke: 4
+      radius: 24
     })
     expect(written.get(`/out/${stamp}_d2.png`)).toBe('png:1920x1080+marker')
     expect(written.get(`/out/${stamp}_d1.png`)).toBe('png:2880x1800')

@@ -21,7 +21,7 @@ An image of a single display, saved as one file in the Output folder.
 _Avoid_: Screen grab, snapshot, image
 
 **Marker**:
-A red ring with an arrow cursor centred inside it, drawn on a Screenshot where the Click that triggered the Capture happened (the cursor's tip is the Click position). Only the Screenshot of the clicked display has one.
+A translucent red circle with an arrow cursor in its middle, drawn on a Screenshot where the Click that triggered the Capture happened (the cursor's tip is the Click position). Only the Screenshot of the clicked display has one.
 _Avoid_: Highlight, dot
 
 **Output folder**:

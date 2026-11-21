@@ -20,7 +20,7 @@ A desktop app that saves a Screenshot of every display each time the user Clicks
 | D4 | Rapid clicks | Clicks less than **300 ms** apart collapse into one Capture (a double-click gives one Capture) |
 | D5 | What is captured | **All displays**: one Screenshot per display for each Click, at native resolution |
 | D6 | Timing | Screenshots are taken **just after** the Click (~100–300 ms later). See [ADR 0001](../docs/adr/0001-capture-just-after-click.md) |
-| D7 | Marker | A red ring plus an arrow cursor (tip at the Click position, ring centred on the arrow so it looks centred), drawn only on the clicked display's Screenshot. The screen capture does not include the real pointer, so the cursor is always an arrow, whatever the real pointer looked like |
+| D7 | Marker | A translucent red circle (about 30 % opaque, no outline, so what is underneath stays readable) with an arrow cursor on top (tip at the Click position, circle centred on the arrow so it looks centred), drawn only on the clicked display's Screenshot. The screen capture does not include the real pointer, so the cursor is always an arrow, whatever the real pointer looked like |
 | D8 | Format | PNG |
 | D9 | Files | Saved directly in the Output folder (no subfolders), named `YYYY-MM-DD_HH-mm-ss-SSS_d<N>.png`, using the Click time |
 | D10 | Output folder | Must be picked before Start works; remembered across launches |
@@ -142,7 +142,7 @@ Start is only allowed when both permissions are granted and an Output folder is 
 3. `desktopCapturer.getSources({ types: ['screen'], thumbnailSize })` with `thumbnailSize` set to the largest display's pixel size. Match each source to a display via `display_id === String(display.id)`.
 4. **Display numbering:** `d1` = primary display, then the rest ordered left to right by `bounds.x`.
 5. For each display, `thumbnail.toPNG()`; if a smaller display's thumbnail came back upscaled, resize it to `size × scaleFactor`.
-6. **Marker (D7):** on the display containing the Click (`screen.getDisplayNearestPoint`), compute `((x − bounds.x) × scaleFactor, (y − bounds.y) × scaleFactor)` and composite a red ring (≈ 24 pt radius, 4 pt stroke, scaled by `scaleFactor`) with `sharp`.
+6. **Marker (D7):** on the display containing the Click (`screen.getDisplayNearestPoint`), compute `((x − bounds.x) × scaleFactor, (y − bounds.y) × scaleFactor)` and composite a translucent red circle (24 pt radius, scaled by `scaleFactor`) and an arrow cursor with `sharp`.
 7. Write every Screenshot as `<Click time>_d<N>.png` into the Output folder. Write the Capture's files in parallel; if any write fails, go to the error transition.
 8. Increase the count, update the Dock badge, send `recorder:capture-saved` to the UI.
 
@@ -241,7 +241,7 @@ Each one ends with something you can run and check.
 - `marker.ts` with `sharp`; position maths unit-tested for display offsets and scale factors.
 - Check whether `desktopCapturer` includes the mouse pointer. Either way, the Marker is drawn.
 - ✅ The Marker sits exactly on the clicked spot on Retina, non-Retina and secondary displays (including displays left of or above the primary).
-- **Code done (2026-11-21), manual check pending.** `markerGeometry.ts` (display lookup, position and size in pixels), `marker.ts` (sharp: white halo under a red ring, 24 pt radius, 4 pt stroke, scaled by the display's scale factor; the clicked spot itself stays uncovered). Position maths and real rendered pixels are unit-tested, including displays with negative origins. The real pointer is not in the screen capture, so an arrow cursor is drawn too (always an arrow, never an I-beam or hand).
+- **Code done (2026-11-21), manual check pending.** `markerGeometry.ts` (display lookup, position and size in pixels), `marker.ts` (sharp: a translucent red circle, 24 pt radius scaled by the display's scale factor, 30 % opaque with no outline, then the cursor with a white outline on top). Position maths and real rendered pixels are unit-tested, including displays with negative origins. The real pointer is not in the screen capture, so an arrow cursor is drawn too (always an arrow, never an I-beam or hand).
 
 ### M6 — Package and verify real permissions (½–1 day)
 - electron-builder `dir` + `dmg`, `hardenedRuntime: true`, ad-hoc signing (or a stable self-signed certificate), `asarUnpack: ["**/*.node", "**/node_modules/sharp/**", "**/node_modules/@img/**"]`.

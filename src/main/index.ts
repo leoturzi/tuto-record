@@ -12,6 +12,9 @@ import { createElectronCapturer, removeFile } from './captureElectron'
 import { createRecorder } from './recorder'
 import { registerToggleShortcut, unregisterShortcuts } from './shortcut'
 
+// In dev mode the title says so, to tell it apart from the installed app.
+const WINDOW_TITLE = is.dev ? 'Tuto-Record (Development)' : 'Tuto-Record'
+
 let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
@@ -19,7 +22,7 @@ function createWindow(): void {
   const window = new BrowserWindow({
     width: 560,
     height: 860,
-    title: 'tuto-record',
+    title: WINDOW_TITLE,
     show: false,
     autoHideMenuBar: true,
     // macOS takes the icon from the app bundle; the other platforms need it on the window.
@@ -31,6 +34,9 @@ function createWindow(): void {
       sandbox: true
     }
   })
+
+  // The page's own <title> would otherwise replace the dev title once it loads.
+  if (is.dev) window.on('page-title-updated', (event) => event.preventDefault())
 
   mainWindow = window
   window.on('closed', () => {

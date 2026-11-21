@@ -2,7 +2,6 @@ import { pixelSize, type DisplayGeometry } from './naming'
 
 /** Marker size in points; it is multiplied by the display's scale factor to get pixels. */
 export const MARKER_RADIUS_PT = 24
-export const MARKER_STROKE_PT = 4
 
 /** Where and how big to draw a Marker, in pixels of one display's Screenshot. */
 export interface MarkerSpec {
@@ -11,11 +10,11 @@ export interface MarkerSpec {
   height: number
   /** Pixels per point on this display; sizes the cursor. */
   scale: number
-  /** Centre of the ring and tip of the cursor (the Click position). It may lie outside the image at the very edge. */
+  /** The tip of the cursor, which is the Click position. It may lie outside the image at the very edge. */
   cx: number
   cy: number
+  /** Radius of the circle, in pixels. */
   radius: number
-  stroke: number
 }
 
 /**
@@ -52,7 +51,6 @@ export function markerSpec(display: DisplayGeometry, x: number, y: number): Mark
     scale,
     cx: Math.round((x - display.bounds.x) * scale),
     cy: Math.round((y - display.bounds.y) * scale),
-    radius: MARKER_RADIUS_PT * scale,
-    stroke: MARKER_STROKE_PT * scale
+    radius: MARKER_RADIUS_PT * scale
   }
 }

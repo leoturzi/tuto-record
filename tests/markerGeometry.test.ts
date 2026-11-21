@@ -53,8 +53,7 @@ describe('markerSpec', () => {
       scale: 2,
       cx: 200,
       cy: 100,
-      radius: 48,
-      stroke: 8
+      radius: 48
     })
   })
 

@@ -56,7 +56,7 @@ After changing code, rebuild it first:
 npm run build:unpack
 ```
 
-Dev mode is quicker for editing, but it is not the real app: it runs the stock **Electron** app (bundle ID `com.github.Electron`), never tuto-record's permissions, and macOS attributes its permissions to whatever launched it. If your terminal or IDE already has Accessibility and Screen Recording, the dev app inherits them, shows no prompts and may not appear in the lists at all. Test permissions with the packaged app.
+Dev mode is quicker for editing, but it is not the real app: it runs the stock **Electron** app (bundle ID `com.github.Electron`), never tuto-record's permissions, and macOS attributes its permissions to whatever launched it. If your terminal or IDE already has Accessibility and Screen Recording, the dev app inherits them, shows no prompts and may not appear in the lists at all. Its window is titled **Tuto-Record (Development)** so you can tell it apart from the installed app. Test permissions with the packaged app.
 
 ```bash
 npm run dev
