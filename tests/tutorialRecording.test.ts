@@ -2,12 +2,12 @@ import { describe, expect, it, vi } from 'vitest'
 import type { SettingsState } from '../src/shared/ipc'
 import { createTutorialRecording, type TutorialRecordingDeps } from '../src/main/tutorialRecording'
 
-const ref = { project: 'Python', tutorial: 'Install' }
+const ref = ['Python', 'Setup', 'Install']
 const ready: SettingsState = {
   projectsFolder: '/p',
   projectsFolderProblem: null,
   selectedTutorial: ref,
-  expandedProjects: []
+  expanded: []
 }
 
 function setup(overrides: Partial<TutorialRecordingDeps> = {}): {

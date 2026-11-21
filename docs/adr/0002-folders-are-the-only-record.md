@@ -1,5 +1,7 @@
 # Folders on disk are the only record of Projects and Tutorials
 
+Narrowed by [ADR 0003](0003-groups-are-marked-with-a-hidden-file.md): from v0.3.0 a hidden `.tuto-group` file marks a folder as a Group.
+
 From v0.2.0, every direct subfolder of the Projects folder is a Project, every direct subfolder of a Project is a Tutorial, and a folder's name is the Project's or Tutorial's name. The app keeps no list, database or metadata file of its own. We chose this so that what the user sees in Finder and in the app can never disagree: a folder created, renamed, moved or deleted in Finder shows up in the app on the next refresh, and the app needs no migration or repair logic.
 
 ## Consequences

@@ -1,5 +1,5 @@
 import { BrowserWindow, Menu, type WebContents } from 'electron'
-import type { RowAction } from '../shared/ipc'
+import type { CreateAction, RowAction } from '../shared/ipc'
 
 /**
  * The application menu, with **Settings… ⌘,**. It keeps the standard Edit menu: on macOS, ⌘C,
@@ -29,22 +29,28 @@ export function installMenu(openSettings: () => void): void {
   Menu.setApplicationMenu(menu)
 }
 
+/** One choice in a popup menu; `null` draws a separator. */
+type Choice<T> = { label: string; value: T } | null
+
 /**
- * Shows the native ⋯ menu of a sidebar row at a point in the sender's window.
- * Resolves to the chosen action, or null when the menu closes without a choice.
+ * Pops up a native menu at a point in the sender's window. Resolves to the chosen value, or null
+ * when the menu closes without a choice.
  */
-export function showRowActions(
+function popup<T>(
   sender: WebContents,
   x: number,
-  y: number
-): Promise<RowAction | null> {
+  y: number,
+  choices: Choice<T>[]
+): Promise<T | null> {
   return new Promise((resolve) => {
-    let choice: RowAction | null = null
-    const menu = Menu.buildFromTemplate([
-      { label: 'Rename', click: () => (choice = 'rename') },
-      { type: 'separator' },
-      { label: 'Move to Trash', click: () => (choice = 'trash') }
-    ])
+    let choice: T | null = null
+    const menu = Menu.buildFromTemplate(
+      choices.map((c) =>
+        c === null
+          ? { type: 'separator' as const }
+          : { label: c.label, click: () => (choice = c.value) }
+      )
+    )
     const window = BrowserWindow.fromWebContents(sender) ?? undefined
     menu.popup({
       window,
@@ -54,4 +60,29 @@ export function showRowActions(
       callback: () => resolve(choice)
     })
   })
+}
+
+/** The ⋯ menu of a sidebar row: Rename, Move to Trash. */
+export function showRowActions(
+  sender: WebContents,
+  x: number,
+  y: number
+): Promise<RowAction | null> {
+  return popup<RowAction>(sender, x, y, [
+    { label: 'Rename', value: 'rename' },
+    null,
+    { label: 'Move to Trash', value: 'trash' }
+  ])
+}
+
+/** The + menu of a Project or Group row: New Tutorial, New Group. */
+export function showCreateActions(
+  sender: WebContents,
+  x: number,
+  y: number
+): Promise<CreateAction | null> {
+  return popup<CreateAction>(sender, x, y, [
+    { label: 'New Tutorial', value: 'tutorial' },
+    { label: 'New Group', value: 'group' }
+  ])
 }

@@ -31,7 +31,7 @@ export function handleImages(projects: ProjectsService): void {
     const parsed = parseImageUrl(request.url)
     if (!parsed) return notFound()
     try {
-      const path = await projects.imagePath(parsed.ref, parsed.file)
+      const path = await projects.imagePath(parsed.tutorial, parsed.file)
       const version = Number(new URL(request.url).searchParams.get('v')) || 0
       const body = await thumbnail(path, version, parsed.size)
       return new Response(new Uint8Array(body), {

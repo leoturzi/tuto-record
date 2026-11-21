@@ -16,18 +16,20 @@ afterEach(async () => {
   await rm(dir, { recursive: true, force: true })
 })
 
-const defaults = { projectsFolder: null, selectedTutorial: null, expandedProjects: [] }
+const defaults = { projectsFolder: null, selectedTutorial: null, expanded: [] }
 const emptyState = { ...defaults, projectsFolderProblem: null }
-const ref = { project: 'Python', tutorial: 'Install' }
+const tutorial = ['Python', 'Install']
+const deep = ['Python', 'Setup', 'macOS', 'Install']
 
-/** A Projects folder with `Python/Install` inside, and a settings service pointing at it. */
-async function withTutorial(): Promise<{
+/** A Projects folder with `Python/Install` and `Python/Setup/macOS/Install`, and a service for it. */
+async function withTutorials(): Promise<{
   service: ReturnType<typeof createSettingsService>
   root: string
   file: string
 }> {
   const root = join(dir, 'projects')
-  await mkdir(join(root, 'Python', 'Install'), { recursive: true })
+  await mkdir(join(root, ...tutorial), { recursive: true })
+  await mkdir(join(root, ...deep), { recursive: true })
   const file = join(dir, 'settings.json')
   const service = createSettingsService(file)
   await service.setProjectsFolder(root)
@@ -36,7 +38,11 @@ async function withTutorial(): Promise<{
 
 describe('parseSettings', () => {
   it('keeps valid fields', () => {
-    const raw = { projectsFolder: '/p', selectedTutorial: ref, expandedProjects: ['A', 'B'] }
+    const raw = {
+      projectsFolder: '/p',
+      selectedTutorial: deep,
+      expanded: ['Python', 'Python/Setup']
+    }
     expect(parseSettings(raw)).toEqual(raw)
   })
 
@@ -48,25 +54,25 @@ describe('parseSettings', () => {
     expect(parseSettings({ outputFolder: '/tmp/shots' })).toEqual(defaults)
   })
 
-  it('drops each malformed field on its own', () => {
+  it('reads a v0.2 settings file', () => {
     expect(
-      parseSettings({ projectsFolder: '', selectedTutorial: ref, expandedProjects: ['A'] })
-    ).toEqual({ projectsFolder: null, selectedTutorial: ref, expandedProjects: ['A'] })
-    expect(parseSettings({ projectsFolder: '/p', selectedTutorial: { project: 'A' } })).toEqual({
-      ...defaults,
-      projectsFolder: '/p'
-    })
-    expect(parseSettings({ expandedProjects: ['A', 3, '', null, 'B'] })).toEqual({
-      ...defaults,
-      expandedProjects: ['A', 'B']
-    })
-    expect(parseSettings({ expandedProjects: 'A' })).toEqual(defaults)
+      parseSettings({
+        projectsFolder: '/p',
+        selectedTutorial: { project: 'Python', tutorial: 'Install' },
+        expandedProjects: ['Python', 'Git']
+      })
+    ).toEqual({ projectsFolder: '/p', selectedTutorial: tutorial, expanded: ['Python', 'Git'] })
   })
 
-  it('keeps only the two fields of a selection', () => {
-    expect(parseSettings({ selectedTutorial: { ...ref, extra: true } }).selectedTutorial).toEqual(
-      ref
-    )
+  it('drops each malformed field on its own', () => {
+    expect(
+      parseSettings({ projectsFolder: '', selectedTutorial: tutorial, expanded: ['A'] })
+    ).toEqual({ projectsFolder: null, selectedTutorial: tutorial, expanded: ['A'] })
+    for (const selection of [['Python'], ['Python', ''], [3, 'a'], { project: 'A' }, 'Python']) {
+      expect(parseSettings({ selectedTutorial: selection }).selectedTutorial).toBeNull()
+    }
+    expect(parseSettings({ expanded: ['A', 3, '', null, 'B', 'A'] }).expanded).toEqual(['A', 'B'])
+    expect(parseSettings({ expanded: 'A' })).toEqual(defaults)
   })
 })
 
@@ -81,17 +87,32 @@ describe('settings service', () => {
     expect(await createSettingsService(file).get()).toEqual(emptyState)
   })
 
-  it('remembers the folder, the selection and the expanded Projects across restarts', async () => {
-    const { service, root, file } = await withTutorial()
-    await service.selectTutorial(ref)
-    await service.setExpanded(['Python', 'Python'])
+  it('remembers the folder, the selection and the expanded keys across restarts', async () => {
+    const { service, root, file } = await withTutorials()
+    await service.selectTutorial(deep)
+    await service.setExpanded(['Python', 'Python/Setup', 'Python'])
 
     expect(await createSettingsService(file).get()).toEqual({
       projectsFolder: root,
       projectsFolderProblem: null,
-      selectedTutorial: ref,
-      expandedProjects: ['Python']
+      selectedTutorial: deep,
+      expanded: ['Python', 'Python/Setup']
     })
+  })
+
+  it('opens a v0.2 file on the same Tutorial with the same Projects expanded', async () => {
+    const { root, file } = await withTutorials()
+    await writeFile(
+      file,
+      JSON.stringify({
+        projectsFolder: root,
+        selectedTutorial: { project: 'Python', tutorial: 'Install' },
+        expandedProjects: ['Python']
+      })
+    )
+    const state = await createSettingsService(file).get()
+    expect(state.selectedTutorial).toEqual(tutorial)
+    expect(state.expanded).toEqual(['Python'])
   })
 
   it('writes valid JSON and leaves no temporary file behind', async () => {
@@ -102,18 +123,15 @@ describe('settings service', () => {
   })
 
   it('clears the selection and the expanded list when the folder changes', async () => {
-    const { service } = await withTutorial()
-    await service.selectTutorial(ref)
+    const { service } = await withTutorials()
+    await service.selectTutorial(tutorial)
     await service.setExpanded(['Python'])
-
-    const state = await service.setProjectsFolder(dir)
-    expect(state).toEqual({ ...emptyState, projectsFolder: dir })
+    expect(await service.setProjectsFolder(dir)).toEqual({ ...emptyState, projectsFolder: dir })
   })
 
   it('reports a problem when the folder was deleted', async () => {
-    const { service, root } = await withTutorial()
+    const { service, root } = await withTutorials()
     await rm(root, { recursive: true })
-
     const state = await service.get()
     expect(state.projectsFolder).toBe(root)
     expect(state.projectsFolderProblem).toMatch(/no longer exists/i)
@@ -121,51 +139,49 @@ describe('settings service', () => {
   })
 
   it('reports no selection when the selected Tutorial folder is gone', async () => {
-    const { service, root } = await withTutorial()
-    await service.selectTutorial(ref)
-    await rm(join(root, 'Python', 'Install'), { recursive: true })
+    const { service, root } = await withTutorials()
+    await service.selectTutorial(deep)
+    await rm(join(root, ...deep), { recursive: true })
     expect((await service.get()).selectedTutorial).toBeNull()
   })
 
-  it('follows a renamed Project in the selection and the expanded list', async () => {
-    const { service, root } = await withTutorial()
-    await service.selectTutorial(ref)
-    await service.setExpanded(['Python', 'Other'])
-    await service.followProjectRename('Python', 'Py')
-    await mkdir(join(root, 'Py', 'Install'), { recursive: true })
+  it('follows a renamed or moved Group in the selection and the expanded keys', async () => {
+    const { service, root } = await withTutorials()
+    await service.selectTutorial(deep)
+    await service.setExpanded(['Python', 'Python/Setup', 'Python/Setup/macOS', 'Git'])
+    await service.followMove(['Python', 'Setup'], ['Git', 'Setup'])
+    await mkdir(join(root, 'Git', 'Setup', 'macOS', 'Install'), { recursive: true })
 
     const state = await service.get()
-    expect(state.selectedTutorial).toEqual({ project: 'Py', tutorial: 'Install' })
-    expect(state.expandedProjects).toEqual(['Py', 'Other'])
+    expect(state.selectedTutorial).toEqual(['Git', 'Setup', 'macOS', 'Install'])
+    expect(state.expanded).toEqual(['Python', 'Git/Setup', 'Git/Setup/macOS', 'Git'])
   })
 
   it('follows a renamed Tutorial only when it is the selected one', async () => {
-    const { service, root } = await withTutorial()
-    await mkdir(join(root, 'Python', 'Setup'))
-    await service.selectTutorial(ref)
-
-    await service.followTutorialRename({ project: 'Python', tutorial: 'Other' }, 'X')
-    expect((await service.get()).selectedTutorial).toEqual(ref)
-
-    await service.followTutorialRename(ref, 'Setup')
-    expect((await service.get()).selectedTutorial).toEqual({ project: 'Python', tutorial: 'Setup' })
+    const { service, root } = await withTutorials()
+    await mkdir(join(root, 'Python', 'Setup2'))
+    await service.selectTutorial(tutorial)
+    await service.followMove(['Python', 'Other'], ['Python', 'X'])
+    expect((await service.get()).selectedTutorial).toEqual(tutorial)
+    await service.followMove(tutorial, ['Python', 'Setup2'])
+    expect((await service.get()).selectedTutorial).toEqual(['Python', 'Setup2'])
   })
 
-  it('forgets a trashed Project or Tutorial', async () => {
-    const { service } = await withTutorial()
-    await service.selectTutorial(ref)
-    await service.setExpanded(['Python', 'Other'])
+  it('forgets what was trashed, at any depth', async () => {
+    const { service } = await withTutorials()
+    await service.selectTutorial(deep)
+    await service.setExpanded(['Python', 'Python/Setup', 'Python/Setup/macOS', 'Git'])
 
-    await service.forgetTutorial({ project: 'Python', tutorial: 'Other' })
-    expect((await service.get()).selectedTutorial).toEqual(ref)
-    await service.forgetTutorial(ref)
-    expect((await service.get()).selectedTutorial).toBeNull()
+    await service.forget(['Python', 'Other'])
+    expect((await service.get()).selectedTutorial).toEqual(deep)
 
-    await service.selectTutorial(ref)
-    await service.forgetProject('Python')
+    await service.forget(['Python', 'Setup'])
     const state = await service.get()
     expect(state.selectedTutorial).toBeNull()
-    expect(state.expandedProjects).toEqual(['Other'])
+    expect(state.expanded).toEqual(['Python', 'Git'])
+
+    await service.forget(['Python'])
+    expect((await service.get()).expanded).toEqual(['Git'])
   })
 })
 

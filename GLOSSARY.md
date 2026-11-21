@@ -14,6 +14,10 @@ _Avoid_: Output folder, root folder, workspace, library
 A named container of related Tutorials, kept as a folder inside the Projects folder.
 _Avoid_: Workspace, collection, album
 
+**Group**:
+A named container inside a Project that holds Tutorials and other Groups, so a Project's Tutorials can be organised at any depth. Kept as a folder.
+_Avoid_: Section, chapter, folder, category
+
 **Tutorial**:
 A named, ordered set of Screenshots that walks through one task, kept as a folder inside its Project. Its Screenshots all come from one Recording; recording it again replaces them.
 _Avoid_: Recording (for the saved result), guide, session

@@ -4,12 +4,12 @@ How to build, install, run and troubleshoot tuto-record, and where the code live
 
 ## Where things are
 
-| Folder                           | What it is                                                                                                                          |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| [`main`](main/README.md)         | The main process: permissions, click hook, capture, Projects and Tutorials on disk, preview images, windows, recorder state machine |
-| [`renderer`](renderer/README.md) | The user interface of the main window and the Settings window, one folder per part of the UI                                        |
-| [`preload`](preload/README.md)   | The bridge that exposes `window.api` to the renderer                                                                                |
-| [`shared`](shared/README.md)     | The IPC contract (channels and types) and the name and image rules, used by all three                                               |
+| Folder                           | What it is                                                                                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`main`](main/README.md)         | The main process: permissions, click hook, capture, Projects, Groups and Tutorials on disk, preview images, windows, recorder state machine |
+| [`renderer`](renderer/README.md) | The user interface of the main window and the Settings window, one folder per part of the UI                                                |
+| [`preload`](preload/README.md)   | The bridge that exposes `window.api` to the renderer                                                                                        |
+| [`shared`](shared/README.md)     | The IPC contract (channels and types), paths, and the name and image rules, used by all three                                               |
 
 The app icons and signing resources are in [`../build`](../build/README.md) and [`../resources`](../resources/README.md). Unit tests are in `tests/` at the project root; each folder's README says which test covers which module. Each README documents its own folder only; the rule is in [CLAUDE.md](../CLAUDE.md).
 
@@ -70,7 +70,7 @@ npm run dev
 npm run build:mac
 ```
 
-Open `dist/tuto-record-0.2.0.dmg` and drag **tuto-record** into **Applications**. The app is ad-hoc signed (by `build/adhocSign.cjs`), not notarized, so macOS may block the first launch of a copy that was downloaded or sent to you: right-click the app and choose **Open**, or allow it under System Settings → Privacy & Security.
+Open `dist/tuto-record-0.3.0.dmg` and drag **tuto-record** into **Applications**. The app is ad-hoc signed (by `build/adhocSign.cjs`), not notarized, so macOS may block the first launch of a copy that was downloaded or sent to you: right-click the app and choose **Open**, or allow it under System Settings → Privacy & Security.
 
 The `.app` is about 290 MB and the `.dmg` about 116 MB. Most of it is Electron itself (the Chromium framework alone is about 250 MB), which any Electron app carries. The build keeps only the English language files and excludes the binaries for other platforms and for Intel Macs.
 

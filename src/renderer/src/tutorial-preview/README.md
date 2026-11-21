@@ -4,12 +4,12 @@ The right pane's content for a Tutorial that has images: the heading, one large 
 
 | File                               | Role                                                                                                                                 |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| [`previewView.ts`](previewView.ts) | Pure. `heading(settings)`, `buildPreview(images, selectedFile)`, `moveSelection`, `selectionAfterRemoval`, `sameImages`.             |
+| [`previewView.ts`](previewView.ts) | Pure. `headingVariants(path)`, `buildPreview(images, selectedFile)`, `moveSelection`, `selectionAfterRemoval`, `sameImages`.         |
 | [`preview.ts`](preview.ts)         | DOM. `createPreview(root, { select, trash })` → `render(images, view)`: the large image and the strip, with the ✕ on each thumbnail. |
 
 ## Behaviour
 
-- **Heading:** `Project › Tutorial`.
+- **Heading:** the Tutorial's full path, `Python › Setup › macOS › Install`. When it does not fit, `main.ts` shows the next shorter form from `headingVariants`, where the Groups in the middle collapse to `…` one at a time (`Python › … › macOS › Install`, then `Python › … › Install`); the Project and the Tutorial always show, and the tooltip has the full path. It is measured after the header buttons are drawn, and again when the window is resized.
 - **What is shown:** every image file in the Tutorial folder (main decides: png, jpg, jpeg, gif, webp), sorted by file name, one thumbnail per file. App Screenshots are named by Click time, so they come out in Click order, d1 before d2. The images come from main as `tuto-image://` URLs at two sizes (`thumbUrl`, `previewUrl`), never as file paths.
 - **Selecting:** click a thumbnail, or press ← / →. The selection stops at both ends (no wrap), is outlined, and is scrolled into view. A selection that disappears (file removed in Finder) falls back to the first image. There are no arrow buttons, and **the large image does nothing when clicked**.
 - **Removing:** hovering a thumbnail shows a ✕ in its top-right corner; Delete or Backspace does the same for the selected image. Main asks "Move … to the Trash?"; afterwards the next image is selected, or the previous one if it was the last.
@@ -22,4 +22,4 @@ The right pane's content for a Tutorial that has images: the heading, one large 
 
 ## Tests
 
-[`tests/previewView.test.ts`](../../../../tests/previewView.test.ts): heading, states, selection fallback, arrows at both ends, selection after removal, list comparison.
+[`tests/previewView.test.ts`](../../../../tests/previewView.test.ts): heading variants, states, selection fallback, arrows at both ends, selection after removal, list comparison.

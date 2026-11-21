@@ -1,4 +1,4 @@
-import type { TutorialRef } from '../shared/ipc'
+import type { ItemPath } from '../shared/ipc'
 
 /** `thumb` for the strip, `preview` for the large view. */
 export type ImageSize = 'thumb' | 'preview'
@@ -12,16 +12,22 @@ const SIZES = Object.keys(IMAGE_WIDTHS) as ImageSize[]
 
 export interface ParsedImageUrl {
   size: ImageSize
-  ref: TutorialRef
+  /** The Tutorial's path: a Project, any Groups, the Tutorial. */
+  tutorial: ItemPath
   file: string
 }
 
 /**
- * `tuto-image://thumb/<project>/<tutorial>/<file>?v=<version>`, each segment URI-encoded.
+ * `tuto-image://thumb/<project>/<group>/…/<tutorial>/<file>?v=<version>`, each segment URI-encoded.
  * `version` (the file's modified time) makes a changed file a new URL, so no cache shows it stale.
  */
-export function imageUrl(size: ImageSize, ref: TutorialRef, file: string, version: number): string {
-  const path = [ref.project, ref.tutorial, file].map(encodeURIComponent).join('/')
+export function imageUrl(
+  size: ImageSize,
+  tutorial: ItemPath,
+  file: string,
+  version: number
+): string {
+  const path = [...tutorial, file].map(encodeURIComponent).join('/')
   return `${IMAGE_SCHEME}://${size}/${path}?v=${version}`
 }
 
@@ -49,8 +55,10 @@ export function parseImageUrl(url: string): ParsedImageUrl | null {
   const size = SIZES.find((s) => s === parsed.hostname)
   if (!size) return null
   const segments = parsed.pathname.split('/').slice(1)
-  if (segments.length !== 3) return null
-  const [project, tutorial, file] = segments.map(decodeSegment)
-  if (project === null || tutorial === null || file === null) return null
-  return { size, ref: { project, tutorial }, file }
+  // At least a Project, a Tutorial and a file.
+  if (segments.length < 3) return null
+  const decoded = segments.map(decodeSegment)
+  if (decoded.some((segment) => segment === null)) return null
+  const names = decoded as string[]
+  return { size, tutorial: names.slice(0, -1), file: names[names.length - 1] }
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildPreview,
-  heading,
+  headingVariants,
   moveSelection,
   sameImages,
   selectionAfterRemoval
@@ -18,14 +18,25 @@ const images = ['a.png', 'b.png', 'c.png'].map((f) => item(f))
 const settings: SettingsState = {
   projectsFolder: '/p',
   projectsFolderProblem: null,
-  selectedTutorial: { project: 'Python', tutorial: 'How to install Python' },
-  expandedProjects: []
+  selectedTutorial: ['Python', 'How to install Python'],
+  expanded: []
 }
 
-describe('heading', () => {
-  it('shows Project › Tutorial', () => {
-    expect(heading(settings)).toBe('Python › How to install Python')
-    expect(heading({ ...settings, selectedTutorial: null })).toBeNull()
+describe('headingVariants', () => {
+  it('shows Project › Tutorial as it is', () => {
+    expect(headingVariants(settings.selectedTutorial!)).toEqual(['Python › How to install Python'])
+  })
+
+  it('collapses the Groups in the middle one at a time, keeping the Project and the Tutorial', () => {
+    expect(headingVariants(['Python', 'Setup', 'macOS', 'Install'])).toEqual([
+      'Python › Setup › macOS › Install',
+      'Python › … › macOS › Install',
+      'Python › … › Install'
+    ])
+    expect(headingVariants(['Python', 'Setup', 'Install'])).toEqual([
+      'Python › Setup › Install',
+      'Python › … › Install'
+    ])
   })
 })
 

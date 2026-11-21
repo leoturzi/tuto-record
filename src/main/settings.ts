@@ -1,42 +1,52 @@
 import { mkdir, readFile, rename, stat, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
-import type { SettingsState, TutorialRef } from '../shared/ipc'
+import type { SettingsState } from '../shared/ipc'
+import { isItemPath, isWithin, pathKey, replacePrefix, type ItemPath } from '../shared/paths'
 import { checkFolder } from './folderCheck'
 
 interface StoredSettings {
   projectsFolder: string | null
-  selectedTutorial: TutorialRef | null
-  expandedProjects: string[]
+  selectedTutorial: ItemPath | null
+  /** Keys (`pathKey`) of the expanded Projects and Groups. */
+  expanded: string[]
 }
 
 const defaults = (): StoredSettings => ({
   projectsFolder: null,
   selectedTutorial: null,
-  expandedProjects: []
+  expanded: []
 })
 
 const isName = (value: unknown): value is string => typeof value === 'string' && value !== ''
 
-/** True when `value` has a non-empty `project` and `tutorial`. */
-export function isTutorialRef(value: unknown): value is TutorialRef {
-  if (typeof value !== 'object' || value === null) return false
+/** The selection from a v0.3 file (a path) or a v0.2 file (`{ project, tutorial }`). */
+function parseSelection(value: unknown): ItemPath | null {
+  if (isItemPath(value)) return value.length >= 2 ? [...value] : null
+  if (typeof value !== 'object' || value === null) return null
   const { project, tutorial } = value as Record<string, unknown>
-  return isName(project) && isName(tutorial)
+  return isName(project) && isName(tutorial) ? [project, tutorial] : null
 }
 
 /**
  * Accepts anything that was read from disk and keeps only what is valid. Each field falls back on
- * its own; a v0.1 file (`{ outputFolder }`) gives the defaults.
+ * its own. A v0.2 file (`selectedTutorial: { project, tutorial }`, `expandedProjects`) is read
+ * into the current shape; a v0.1 file (`{ outputFolder }`) gives the defaults.
  */
 export function parseSettings(raw: unknown): StoredSettings {
   if (typeof raw !== 'object' || raw === null) return defaults()
-  const { projectsFolder, selectedTutorial, expandedProjects } = raw as Record<string, unknown>
+  const { projectsFolder, selectedTutorial, expanded, expandedProjects } = raw as Record<
+    string,
+    unknown
+  >
+  const keys = Array.isArray(expanded)
+    ? expanded
+    : Array.isArray(expandedProjects)
+      ? expandedProjects
+      : []
   return {
     projectsFolder: isName(projectsFolder) ? projectsFolder : null,
-    selectedTutorial: isTutorialRef(selectedTutorial)
-      ? { project: selectedTutorial.project, tutorial: selectedTutorial.tutorial }
-      : null,
-    expandedProjects: Array.isArray(expandedProjects) ? expandedProjects.filter(isName) : []
+    selectedTutorial: parseSelection(selectedTutorial),
+    expanded: [...new Set(keys.filter(isName))]
   }
 }
 
@@ -44,20 +54,22 @@ export interface SettingsService {
   get(): Promise<SettingsState>
   /** Saves the folder and clears the selection and the expanded list. */
   setProjectsFolder(folder: string): Promise<SettingsState>
-  selectTutorial(ref: TutorialRef | null): Promise<SettingsState>
-  setExpanded(projects: string[]): Promise<void>
-  /** Keeps the selection and the expanded list pointing at a renamed Project. */
-  followProjectRename(from: string, to: string): Promise<void>
-  /** Keeps the selection pointing at a renamed Tutorial. */
-  followTutorialRename(ref: TutorialRef, to: string): Promise<void>
-  /** Drops the selection and the expanded entry of a trashed Project. */
-  forgetProject(name: string): Promise<void>
-  /** Drops the selection of a trashed Tutorial. */
-  forgetTutorial(ref: TutorialRef): Promise<void>
+  selectTutorial(path: ItemPath | null): Promise<SettingsState>
+  setExpanded(keys: string[]): Promise<void>
+  /**
+   * A Project, Group or Tutorial was renamed or moved from `from` to `to`: the selection and the
+   * expanded keys inside it follow.
+   */
+  followMove(from: ItemPath, to: ItemPath): Promise<void>
+  /** A Project, Group or Tutorial went to the Trash: drop the selection and expanded keys inside it. */
+  forget(path: ItemPath): Promise<void>
 }
 
-const sameRef = (a: TutorialRef | null, b: TutorialRef): boolean =>
-  a !== null && a.project === b.project && a.tutorial === b.tutorial
+/** Maps every expanded key inside `from` to the same place inside `to`. */
+function moveKeys(keys: string[], from: ItemPath, to: ItemPath): string[] {
+  const moved = keys.map((key) => pathKey(replacePrefix(key.split('/'), from, to)))
+  return [...new Set(moved)]
+}
 
 async function isDirectory(path: string): Promise<boolean> {
   try {
@@ -96,12 +108,12 @@ export function createSettingsService(filePath: string): SettingsService {
       projectsFolder !== null &&
       problem === null &&
       selectedTutorial !== null &&
-      (await isDirectory(join(projectsFolder, selectedTutorial.project, selectedTutorial.tutorial)))
+      (await isDirectory(join(projectsFolder, ...selectedTutorial)))
     return {
       projectsFolder,
       projectsFolderProblem: problem,
       selectedTutorial: selectionExists ? selectedTutorial : null,
-      expandedProjects: settings.expandedProjects
+      expanded: settings.expanded
     }
   }
 
@@ -116,48 +128,30 @@ export function createSettingsService(filePath: string): SettingsService {
       return toState(settings)
     },
 
-    async selectTutorial(ref) {
-      const settings = { ...(await load()), selectedTutorial: ref }
+    async selectTutorial(path) {
+      const settings = { ...(await load()), selectedTutorial: path ? [...path] : null }
       await save(settings)
       return toState(settings)
     },
 
-    async setExpanded(projects) {
-      await update((s) => ({ ...s, expandedProjects: [...new Set(projects)] }))
+    async setExpanded(keys) {
+      await update((s) => ({ ...s, expanded: [...new Set(keys)] }))
     },
 
-    async followProjectRename(from, to) {
+    async followMove(from, to) {
+      await update((s) => ({
+        ...s,
+        selectedTutorial: s.selectedTutorial && replacePrefix(s.selectedTutorial, from, to),
+        expanded: moveKeys(s.expanded, from, to)
+      }))
+    },
+
+    async forget(path) {
       await update((s) => ({
         ...s,
         selectedTutorial:
-          s.selectedTutorial?.project === from
-            ? { project: to, tutorial: s.selectedTutorial.tutorial }
-            : s.selectedTutorial,
-        expandedProjects: s.expandedProjects.map((name) => (name === from ? to : name))
-      }))
-    },
-
-    async followTutorialRename(ref, to) {
-      await update((s) => ({
-        ...s,
-        selectedTutorial: sameRef(s.selectedTutorial, ref)
-          ? { project: ref.project, tutorial: to }
-          : s.selectedTutorial
-      }))
-    },
-
-    async forgetProject(name) {
-      await update((s) => ({
-        ...s,
-        selectedTutorial: s.selectedTutorial?.project === name ? null : s.selectedTutorial,
-        expandedProjects: s.expandedProjects.filter((p) => p !== name)
-      }))
-    },
-
-    async forgetTutorial(ref) {
-      await update((s) => ({
-        ...s,
-        selectedTutorial: sameRef(s.selectedTutorial, ref) ? null : s.selectedTutorial
+          s.selectedTutorial && isWithin(s.selectedTutorial, path) ? null : s.selectedTutorial,
+        expanded: s.expanded.filter((key) => !isWithin(key.split('/'), path))
       }))
     }
   }

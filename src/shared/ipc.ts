@@ -1,4 +1,7 @@
 /** Channel names and payload types shared by main, preload and renderer. */
+import type { ItemPath } from './paths'
+
+export type { ItemPath } from './paths'
 
 export const IPC = {
   permissionsGet: 'permissions:get',
@@ -12,13 +15,13 @@ export const IPC = {
   tutorialOpenInFinder: 'tutorial:open-in-finder',
   windowOpenSettings: 'window:open-settings',
   menuRowActions: 'menu:row-actions',
+  menuCreateActions: 'menu:create-actions',
   projectsList: 'projects:list',
   projectsCreate: 'projects:create',
-  projectsRename: 'projects:rename',
-  projectsTrash: 'projects:trash',
-  tutorialsCreate: 'tutorials:create',
-  tutorialsRename: 'tutorials:rename',
-  tutorialsTrash: 'tutorials:trash',
+  itemsCreate: 'items:create',
+  itemsRename: 'items:rename',
+  itemsTrash: 'items:trash',
+  itemsMove: 'items:move',
   imagesList: 'images:list',
   imagesTrash: 'images:trash',
   recorderGetState: 'recorder:get-state',
@@ -41,20 +44,20 @@ export interface PermissionsStatus {
   allGranted: boolean
 }
 
-/** Points at one Tutorial by its Project's and its own folder names. */
-export interface TutorialRef {
-  project: string
-  tutorial: string
-}
+/** What can live inside a Project or a Group. */
+export type ItemKind = 'group' | 'tutorial'
 
-export interface TutorialNode {
+export interface TreeNode {
+  kind: ItemKind
   name: string
+  /** Groups only: Groups first, then Tutorials, each newest first. */
+  children?: TreeNode[]
 }
 
 export interface ProjectNode {
   name: string
-  /** Newest first, by folder creation time. */
-  tutorials: TutorialNode[]
+  /** Groups first, then Tutorials, each newest first by folder creation time. */
+  children: TreeNode[]
 }
 
 /** One image file in a Tutorial folder, as the preview shows it. */
@@ -65,7 +68,7 @@ export interface ImageItem {
   previewUrl: string
 }
 
-/** Result of a create or rename: `error` is null when it worked, otherwise a short message. */
+/** Result of a create, rename or move: `error` is null when it worked, otherwise a short message. */
 export interface NameResult {
   error: string | null
 }
@@ -73,15 +76,18 @@ export interface NameResult {
 /** What the ⋯ menu on a sidebar row offers. */
 export type RowAction = 'rename' | 'trash'
 
+/** What the + menu on a Project or Group row offers. */
+export type CreateAction = ItemKind
+
 export interface SettingsState {
   /** The Projects folder the user chose, or null before one was chosen. */
   projectsFolder: string | null
   /** Why the Projects folder cannot be used right now (deleted, not writable), or null if it is fine. */
   projectsFolderProblem: string | null
-  /** The selected Tutorial, or null when none is selected or its folder no longer exists. */
-  selectedTutorial: TutorialRef | null
-  /** Names of the Projects shown expanded in the sidebar. */
-  expandedProjects: string[]
+  /** Path of the selected Tutorial, or null when none is selected or its folder no longer exists. */
+  selectedTutorial: ItemPath | null
+  /** Keys (paths joined with '/') of the Projects and Groups shown expanded in the sidebar. */
+  expanded: string[]
 }
 
 export type RecorderPhase = 'idle' | 'starting' | 'recording'
@@ -105,27 +111,30 @@ export interface TutoApi {
   getSettings(): Promise<SettingsState>
   /** Opens the folder picker. Resolves with the settings after the dialog (unchanged if cancelled). */
   chooseProjectsFolder(): Promise<SettingsState>
-  selectTutorial(ref: TutorialRef | null): Promise<SettingsState>
-  setExpandedProjects(projects: string[]): Promise<void>
+  selectTutorial(path: ItemPath | null): Promise<SettingsState>
+  setExpanded(keys: string[]): Promise<void>
   openProjectsFolder(): Promise<void>
-  openTutorialInFinder(ref: TutorialRef): Promise<void>
+  openTutorialInFinder(path: ItemPath): Promise<void>
   openSettings(): Promise<void>
   /** Shows the native ⋯ menu at a point in the window. Resolves to the choice, or null. */
   showRowActions(point: { x: number; y: number }): Promise<RowAction | null>
+  /** Shows the native + menu (New Tutorial / New Group). Resolves to the choice, or null. */
+  showCreateActions(point: { x: number; y: number }): Promise<CreateAction | null>
 
   listProjects(): Promise<ProjectNode[]>
   createProject(name: string): Promise<NameResult>
-  renameProject(project: string, to: string): Promise<NameResult>
+  /** Creates a Tutorial or a Group inside the Project or Group at `parent`. */
+  createItem(parent: ItemPath, kind: ItemKind, name: string): Promise<NameResult>
+  /** Renames a Project, Group or Tutorial. */
+  renameItem(path: ItemPath, to: string): Promise<NameResult>
   /** Asks first. Resolves to false if the user cancelled. */
-  trashProject(project: string): Promise<boolean>
-  createTutorial(project: string, name: string): Promise<NameResult>
-  renameTutorial(ref: TutorialRef, to: string): Promise<NameResult>
-  /** Asks first. Resolves to false if the user cancelled. */
-  trashTutorial(ref: TutorialRef): Promise<boolean>
+  trashItem(path: ItemPath): Promise<boolean>
+  /** Moves a Tutorial or Group into the Project or Group at `destination`. */
+  moveItem(path: ItemPath, destination: ItemPath): Promise<NameResult>
 
-  listImages(ref: TutorialRef): Promise<ImageItem[]>
+  listImages(tutorial: ItemPath): Promise<ImageItem[]>
   /** Asks first. Resolves to false if the user cancelled. */
-  trashImage(ref: TutorialRef, file: string): Promise<boolean>
+  trashImage(tutorial: ItemPath, file: string): Promise<boolean>
 
   getRecorderStatus(): Promise<RecorderStatus>
   startRecording(): Promise<void>

@@ -1,4 +1,4 @@
-import type { SettingsState, TutorialRef } from '../shared/ipc'
+import type { ItemPath, SettingsState } from '../shared/ipc'
 
 export interface ConfirmRequest {
   message: string
@@ -10,8 +10,8 @@ export interface ConfirmRequest {
 export interface TutorialRecordingDeps {
   permissionsGranted(): boolean
   getSettings(): Promise<SettingsState>
-  countImages(ref: TutorialRef): Promise<number>
-  trashAllImages(ref: TutorialRef): Promise<void>
+  countImages(tutorial: ItemPath): Promise<number>
+  trashAllImages(tutorial: ItemPath): Promise<void>
   confirm(request: ConfirmRequest): Promise<boolean>
   /** `recorder.start`, passed as a closure because the recorder is created after this. */
   startRecorder(): Promise<void>
@@ -32,20 +32,20 @@ const images = (count: number): string => (count === 1 ? '1 image' : `${count} i
 /** The rules for recording into the selected Tutorial (one Recording per Tutorial). */
 export function createTutorialRecording(deps: TutorialRecordingDeps): TutorialRecording {
   /** Everything except "the Tutorial must be empty". */
-  async function selection(): Promise<{ ref: TutorialRef } | { problem: string }> {
+  async function selection(): Promise<{ path: ItemPath } | { problem: string }> {
     if (!deps.permissionsGranted()) return { problem: 'Grant both permissions first.' }
     const settings = await deps.getSettings()
     if (!settings.projectsFolder) return { problem: 'Choose a Projects folder first.' }
     if (settings.projectsFolderProblem) return { problem: settings.projectsFolderProblem }
     if (!settings.selectedTutorial) return { problem: 'Select a Tutorial first.' }
-    return { ref: settings.selectedTutorial }
+    return { path: settings.selectedTutorial }
   }
 
   return {
     async checkReady() {
       const selected = await selection()
       if ('problem' in selected) return selected.problem
-      if ((await deps.countImages(selected.ref)) > 0) {
+      if ((await deps.countImages(selected.path)) > 0) {
         return 'This Tutorial already has screenshots. Use Record again to replace them.'
       }
       return null
@@ -58,15 +58,15 @@ export function createTutorialRecording(deps: TutorialRecordingDeps): TutorialRe
         await deps.startRecorder()
         return false
       }
-      const count = await deps.countImages(selected.ref)
+      const count = await deps.countImages(selected.path)
       if (count > 0) {
         const ok = await deps.confirm({
           message: `Move ${images(count)} to the Trash and record again?`,
-          detail: `Everything in "${selected.ref.tutorial}" will be replaced by the new Recording. You can get the images back from the Trash.`,
+          detail: `Everything in "${selected.path[selected.path.length - 1]}" will be replaced by the new Recording. You can get the images back from the Trash.`,
           confirmLabel: 'Record again'
         })
         if (!ok) return false
-        await deps.trashAllImages(selected.ref)
+        await deps.trashAllImages(selected.path)
       }
       await deps.startRecorder()
       return true

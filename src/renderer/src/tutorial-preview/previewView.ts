@@ -1,9 +1,24 @@
-import type { ImageItem, SettingsState } from '../../../shared/ipc'
+import type { ImageItem } from '../../../shared/ipc'
+import type { ItemPath } from '../../../shared/paths'
 
-/** `Project › Tutorial`, or null when no Tutorial is selected. */
-export function heading(settings: SettingsState): string | null {
-  const ref = settings.selectedTutorial
-  return ref ? `${ref.project} › ${ref.tutorial}` : null
+const SEPARATOR = ' › '
+
+/**
+ * The heading for a Tutorial's path, from the longest to the shortest: the full path
+ * (`Python › Setup › macOS › Install`), then with the Groups in the middle collapsed to `…`, one
+ * more each time, starting next to the Project (`Python › … › macOS › Install`,
+ * `Python › … › Install`). The Project and the Tutorial are always shown.
+ */
+export function headingVariants(path: ItemPath): string[] {
+  if (path.length <= 2) return [path.join(SEPARATOR)]
+  const project = path[0]
+  const groups = path.slice(1, -1)
+  const tutorial = path[path.length - 1]
+  const variants = [path.join(SEPARATOR)]
+  for (let hidden = 1; hidden <= groups.length; hidden++) {
+    variants.push([project, '…', ...groups.slice(hidden), tutorial].join(SEPARATOR))
+  }
+  return variants
 }
 
 export interface PreviewView {

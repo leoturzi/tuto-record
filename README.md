@@ -4,23 +4,31 @@
 
 A macOS app that saves a screenshot of every display each time you click, so your clicks can later be turned into a step-by-step tutorial. Pick a Tutorial, press Start, use your computer as usual, press Stop: the Tutorial now holds one screenshot per display per click, with a cursor arrow on a see-through red circle showing where you clicked, and the window shows them all.
 
-Version 0.2 runs on Apple Silicon Macs.
+Version 0.3 runs on Apple Silicon Macs.
 
 ## Using it
 
 ### Projects and Tutorials
 
-Your work is organised in **Projects**, and each Project holds **Tutorials**. A Tutorial is the set of screenshots of one task, such as "How to install Python". On disk they are plain folders:
+Your work is organised in **Projects**. A Project holds **Tutorials**, and can also hold **Groups** to organise them: a Group holds Tutorials and other Groups, as deep as you like. A Tutorial is the set of screenshots of one task, such as "How to install Python". On disk they are plain folders:
 
 ```
 <Projects folder>/
-  Python/                      ← a Project
-    How to install Python/     ← a Tutorial
-      2026-11-21_09-15-42-123_d1.png
-      …
+  Python/                          ← a Project
+    Quick start/                   ← a Tutorial
+    Setup/                         ← a Group
+      macOS/                       ← a Group inside it
+        How to install Python/     ← a Tutorial
+          2026-11-21_09-15-42-123_d1.png
+          …
 ```
 
-The folders are all there is: a folder you create, rename or delete in Finder shows up in the app within a couple of seconds, and the other way round.
+The folders are all there is: a folder you create, rename, move or delete in Finder shows up in the app within a couple of seconds, and the other way round. A few things decide whether a folder inside a Project is a Group or a Tutorial:
+
+- A Group made in the app has a hidden file, `.tuto-group`, so it stays a Group even while it is empty.
+- A folder with screenshots in it is always a Tutorial; any folders inside it are ignored.
+- A folder that only holds other folders is a Group, so nested folders you make in Finder work too.
+- An empty folder made in Finder is an empty Tutorial. To make an empty Group, use **New Group** in the app.
 
 ### First launch: Settings
 
@@ -39,11 +47,12 @@ Open Settings again at any time with **⌘,** or the **Settings** button at the 
 
 ### The main window
 
-The sidebar on the left lists your Projects, newest first. Click a Project to show or hide its Tutorials, and click a Tutorial to open it on the right.
+The sidebar on the left lists your Projects, newest first. Inside each one, Groups come first, then Tutorials, each newest first. Click a Project or Group to show or hide what's inside, and click a Tutorial to open it on the right. The heading shows where the Tutorial is (`Python › Setup › macOS › How to install Python`); when the window is narrow, the Groups in the middle shrink to `…`, and hovering shows the whole path.
 
 - **New Project:** press **+** next to PROJECTS, type a name, press Return (Esc cancels).
-- **New Tutorial:** hover a Project and press its **+**. The new Tutorial is selected.
-- **Rename or delete:** hover a row and press **⋯**, then **Rename** or **Move to Trash**. Moving a Project to the Trash takes its Tutorials with it. The app asks first, and you can get everything back from the Trash.
+- **New Tutorial or Group:** hover a Project or Group, press its **+**, and choose **New Tutorial** or **New Group**. A new Tutorial is selected.
+- **Move:** drag a Tutorial or Group onto a Project or Group, in the same Project or another one. A Group moves with everything inside it. If something there already has that name, the move is refused and the window says why. To undo a move, drag it back.
+- **Rename or delete:** hover a row and press **⋯**, then **Rename** or **Move to Trash**. Moving a Project or Group to the Trash takes everything inside it. The app asks first, and you can get everything back from the Trash.
 
 Names can't contain `/` or `:`, can't start with a dot, and must be different from the other names next to them (ignoring upper and lower case). The field says what is wrong as you type.
 
@@ -101,5 +110,7 @@ Each counted click is one **capture**: one PNG per connected display, saved in t
 | [MVP plan](plans/MVP_PLAN.md)                           | The plan for version 0.1 and its progress notes                                             |
 | [v0.2.0 plan](plans/V0.2.0_PLAN.md)                     | The plan for version 0.2.0 (Projects, Tutorials, the new window)                            |
 | [v0.2.0 implementation](plans/V0.2.0_IMPLEMENTATION.md) | How version 0.2.0 was built, step by step, and its progress notes                           |
+| [v0.3.0 plan](plans/V0.3.0_PLAN.md)                     | The plan for version 0.3.0 (Groups inside Projects, drag and drop)                          |
+| [v0.3.0 implementation](plans/V0.3.0_IMPLEMENTATION.md) | How version 0.3.0 is built, step by step, and its progress notes                            |
 | [Decision records](docs/adr)                            | Why the hard-to-reverse choices were made                                                   |
 | [Working rules for Claude](CLAUDE.md)                   | How Claude works in this project, including keeping the documentation up to date            |

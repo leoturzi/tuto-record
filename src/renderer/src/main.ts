@@ -4,10 +4,10 @@ import type {
   PermissionsStatus,
   ProjectNode,
   RecorderStatus,
-  SettingsState,
-  TutorialRef
+  SettingsState
 } from '../../shared/ipc'
 import { validateName } from '../../shared/names'
+import { pathKey, type ItemPath } from '../../shared/paths'
 import { createRecorderBar } from './recorder-bar/recorderBar'
 import { buildRecorderView, type TutorialState } from './recorder-bar/recorderView'
 import { buildStatus } from './recorder-bar/status'
@@ -22,7 +22,7 @@ import {
 import { createPreview } from './tutorial-preview/preview'
 import {
   buildPreview,
-  heading,
+  headingVariants,
   moveSelection,
   selectionAfterRemoval
 } from './tutorial-preview/previewView'
@@ -65,7 +65,7 @@ const previewEl = $('#preview')
 const status = $('#status')
 const problem = $('#problem')
 
-const selectedRef = (): TutorialRef | null => state.settings?.selectedTutorial ?? null
+const selectedRef = (): ItemPath | null => state.settings?.selectedTutorial ?? null
 
 function tutorialState(): TutorialState {
   if (!selectedRef() || state.images === null) return 'none'
@@ -86,6 +86,7 @@ async function attempt(action: () => Promise<unknown>): Promise<void> {
 // Sidebar
 
 function startEditing(editing: Exclude<Editing, null>, value: string): void {
+  state.problem = null
   state.editing = editing
   state.draft = { value, error: null }
   render()
@@ -112,22 +113,22 @@ async function commit(): Promise<void> {
   committing = true
   try {
     const result =
-      editing.kind === 'new-project'
-        ? await window.api.createProject(name)
-        : editing.kind === 'new-tutorial'
-          ? await window.api.createTutorial(editing.project, name)
-          : editing.kind === 'rename-project'
-            ? await window.api.renameProject(editing.project, name)
-            : await window.api.renameTutorial(editing.ref, name)
+      editing.kind === 'rename'
+        ? await window.api.renameItem(editing.path, name)
+        : editing.what === 'project'
+          ? await window.api.createProject(name)
+          : await window.api.createItem(editing.parent, editing.what, name)
     if (result.error) {
       state.draft = { ...state.draft, error: result.error }
       render()
       return
     }
     stopEditing()
-    if (editing.kind === 'new-tutorial') {
-      state.settings = await window.api.selectTutorial({ project: editing.project, tutorial: name })
+    if (editing.kind === 'new' && editing.what === 'tutorial') {
+      state.settings = await window.api.selectTutorial([...editing.parent, name])
       state.selectedFile = null
+    } else if (editing.kind === 'new' && editing.what === 'group') {
+      setExpanded([...editing.parent, name], true)
     }
     await refresh()
   } catch (err) {
@@ -139,51 +140,56 @@ async function commit(): Promise<void> {
   }
 }
 
-function setExpanded(project: string, expanded: boolean): void {
-  if (!state.settings) return
-  const others = state.settings.expandedProjects.filter((p) => p !== project)
-  const next = expanded ? [...others, project] : others
-  state.settings = { ...state.settings, expandedProjects: next }
+const isExpanded = (path: ItemPath): boolean =>
+  state.settings?.expanded.includes(pathKey(path)) ?? false
+
+function setExpanded(path: ItemPath, expanded: boolean): void {
+  if (!state.settings || isExpanded(path) === expanded) return
+  const key = pathKey(path)
+  const others = state.settings.expanded.filter((k) => k !== key)
+  const next = expanded ? [...others, key] : others
+  state.settings = { ...state.settings, expanded: next }
   render()
-  void window.api.setExpandedProjects(next)
+  void window.api.setExpanded(next)
 }
 
 const sidebar = createSidebar($('#sidebar'), {
-  select(ref) {
+  select(path) {
     if (state.recorder.phase !== 'idle') return
     void attempt(async () => {
-      state.settings = await window.api.selectTutorial(ref)
+      state.settings = await window.api.selectTutorial(path)
       state.selectedFile = null
       state.images = null
     })
   },
-  toggle(project) {
-    setExpanded(project, !state.settings?.expandedProjects.includes(project))
+  toggle(path) {
+    setExpanded(path, !isExpanded(path))
+  },
+  expand(path) {
+    setExpanded(path, true)
   },
   newProject() {
-    startEditing({ kind: 'new-project' }, '')
+    startEditing({ kind: 'new', parent: [], what: 'project' }, '')
   },
-  newTutorial(project) {
-    // Expand for good, so the new Tutorial stays visible once it is created.
-    if (!state.settings?.expandedProjects.includes(project)) setExpanded(project, true)
-    startEditing({ kind: 'new-tutorial', project }, '')
+  add(row, at) {
+    void window.api.showCreateActions(at).then((what) => {
+      if (!what) return
+      // Expand for good, so the new item stays visible once it is created.
+      setExpanded(row.path, true)
+      startEditing({ kind: 'new', parent: row.path, what }, '')
+    })
   },
   rowMenu(row, at) {
     void window.api.showRowActions(at).then((choice) => {
-      if (choice === 'rename') {
-        startEditing(
-          row.kind === 'project'
-            ? { kind: 'rename-project', project: row.project }
-            : { kind: 'rename-tutorial', ref: { project: row.project, tutorial: row.name } },
-          row.name
-        )
-      } else if (choice === 'trash') {
-        void attempt(() =>
-          row.kind === 'project'
-            ? window.api.trashProject(row.project)
-            : window.api.trashTutorial({ project: row.project, tutorial: row.name })
-        )
-      }
+      if (choice === 'rename') startEditing({ kind: 'rename', path: row.path }, row.name)
+      else if (choice === 'trash') void attempt(() => window.api.trashItem(row.path))
+    })
+  },
+  move(path, destination) {
+    void attempt(async () => {
+      const result = await window.api.moveItem(path, destination)
+      if (result.error) throw new Error(result.error)
+      setExpanded(destination, true)
     })
   },
   draftChanged(value) {
@@ -305,19 +311,19 @@ function render(): void {
 
   const rows = buildSidebarRows(
     state.tree,
-    settings?.expandedProjects ?? [],
+    settings?.expanded ?? [],
     selectedRef(),
     state.editing,
     state.draft
   )
-  sidebar.render(rows, sidebarEmptyMessage(hasFolder, rows.length), hasFolder)
+  const canDrag = state.editing === null && state.recorder.phase === 'idle'
+  sidebar.render(rows, sidebarEmptyMessage(hasFolder, rows.length), hasFolder, canDrag)
 
   if (!settings) return
   const tutorial = tutorialState()
   const statusView = buildStatus(permissionsGranted, settings, tutorial, state.images?.length ?? 0)
   const view = buildPreview(tutorial === 'none' ? null : state.images, state.selectedFile)
 
-  setText(headingEl, heading(settings) ?? 'tuto-record')
   notice.hidden = !statusView.needsSettings
   noticeText.textContent = statusView.text
   placeholder.hidden = statusView.needsSettings || view.state !== 'none'
@@ -333,7 +339,27 @@ function render(): void {
     buildRecorderView(state.recorder, statusView.ready, tutorial),
     selectedRef() !== null
   )
+  // Last, so the header buttons are in place when the heading measures the space it has.
+  showHeading(selectedRef())
 }
+
+/** The longest form of the Tutorial's path that fits the header; the full path is the tooltip. */
+function showHeading(path: ItemPath | null): void {
+  if (!path) {
+    setText(headingEl, 'tuto-record')
+    headingEl.title = ''
+    return
+  }
+  const variants = headingVariants(path)
+  headingEl.hidden = false
+  headingEl.title = variants[0]
+  for (const text of variants) {
+    headingEl.textContent = text
+    if (headingEl.scrollWidth <= headingEl.clientWidth) break
+  }
+}
+
+window.addEventListener('resize', () => showHeading(selectedRef()))
 
 let refreshing: Promise<void> | null = null
 let refreshAgain = false

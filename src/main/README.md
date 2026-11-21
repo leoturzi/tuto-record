@@ -1,6 +1,6 @@
 # Main process (`src/main`)
 
-Everything privileged lives here: permissions, the global click hook, screen capture, the Projects folder on disk, the image protocol, windows, menus and the Dock. The renderer ([`src/renderer`](../renderer/README.md)) only shows state and sends commands; it reaches this code through the typed [IPC contract](../shared/README.md) and the [preload script](../preload/README.md). Terms such as **Projects folder**, **Project**, **Tutorial**, **Recording**, **Click**, **Capture**, **Screenshot** and **Marker** are defined in [GLOSSARY.md](../../GLOSSARY.md); this document uses them in that sense.
+Everything privileged lives here: permissions, the global click hook, screen capture, the Projects folder on disk, the image protocol, windows, menus and the Dock. The renderer ([`src/renderer`](../renderer/README.md)) only shows state and sends commands; it reaches this code through the typed [IPC contract](../shared/README.md) and the [preload script](../preload/README.md). Terms such as **Projects folder**, **Project**, **Group**, **Tutorial**, **Recording**, **Click**, **Capture**, **Screenshot** and **Marker** are defined in [GLOSSARY.md](../../GLOSSARY.md); this document uses them in that sense.
 
 ## How it fits together
 
@@ -56,11 +56,11 @@ Creates the services and wires them, registers IPC, the menu and the shortcut, a
 ### `menu.ts` — menus
 
 - `installMenu(openSettings)`: the application menu with **Settings… ⌘,**. **It keeps the standard Edit menu on purpose:** on macOS, ⌘C, ⌘V, ⌘A and ⌘Z in text fields (the sidebar's name fields) only work through the Edit menu's roles.
-- `showRowActions(sender, x, y)`: the native ⋯ menu of a sidebar row (Rename, Move to Trash). Resolves to the choice, or `null` when it closes without one.
+- `showRowActions(sender, x, y)`: the native ⋯ menu of a sidebar row (Rename, Move to Trash), and `showCreateActions(sender, x, y)`: the native + menu of a Project or Group row (New Tutorial, New Group). Both resolve to the choice, or `null` when the menu closes without one.
 
 ### `ipc.ts` — the renderer's door
 
-`registerIpc(services)` registers every `ipcMain.handle` and checks the shape of everything coming from the renderer (strings are strings, Tutorial refs have both names, points are numbers). It forwards to the services and adds the confirmations for anything that moves files to the Trash. Names are checked a second time by `projects.ts`. The channels and payloads are listed in the [shared contract](../shared/README.md); the one push (`recorder:state`) is sent from `index.ts`.
+`registerIpc(services)` registers every `ipcMain.handle` and checks the shape of everything coming from the renderer (strings are strings, paths are non-empty lists of names, kinds are `tutorial` or `group`, points are numbers). It forwards to the services, adds the confirmations for anything that moves files to the Trash, and keeps the settings in step after a rename, a move or a trash (`followMove`, `forget`). Paths and names are checked a second time by `projects.ts`. The channels and payloads are listed in the [shared contract](../shared/README.md); the one push (`recorder:state`) is sent from `index.ts`.
 
 ### Permissions
 
@@ -87,33 +87,46 @@ Things that are easy to get wrong:
 | [`settings.ts`](settings.ts)       | `createSettingsService(filePath)`: reads and writes `settings.json` in `userData`. Writes go to a temporary file first, then `rename`. |
 | [`folderCheck.ts`](folderCheck.ts) | `checkFolder(path)`: `null` if the folder exists and is writable, otherwise a short message.                                           |
 
-The file holds `{ "projectsFolder": string | null, "selectedTutorial": { "project", "tutorial" } | null, "expandedProjects": string[] }`.
+The file holds `{ "projectsFolder": string | null, "selectedTutorial": string[] | null, "expanded": string[] }`. `selectedTutorial` is the Tutorial's **path** (folder names from the Project down, see [`paths.ts`](../shared/README.md#paths-pathsts)); `expanded` holds the keys (paths joined with `/`) of the expanded Projects and Groups.
 
-- **Each field is checked on its own** (`parseSettings`): a malformed field falls back to its default without touching the others. A missing or corrupt file means defaults. A v0.1 file (`{ "outputFolder": … }`) also means defaults: the old folder is deliberately not carried over.
+- **Each field is checked on its own** (`parseSettings`): a malformed field falls back to its default without touching the others. A missing or corrupt file means defaults. A v0.1 file (`{ "outputFolder": … }`) also means defaults: the old folder is deliberately not carried over. **A v0.2 file is read into the current shape**: `selectedTutorial: { project, tutorial }` becomes `[project, tutorial]` and `expandedProjects` becomes `expanded` (Project names are already valid keys).
 - **`get()` re-checks on every call**: the Projects folder (`projectsFolderProblem`), and whether the selected Tutorial's folder still exists (`selectedTutorial` reads as `null` when it does not). So a folder deleted in Finder is noticed by the UI poll, by the readiness check and by every Capture. `get()` never writes.
 - **`setProjectsFolder`** clears the selection and the expanded list, because they named folders in the old one.
-- **`followProjectRename`, `followTutorialRename`, `forgetProject`, `forgetTutorial`** keep the selection and the expanded list in step with renames and trashing done in the app. Changes made in Finder are not followed; the selection then simply reads as `null`.
+- **`followMove(from, to)`** (after a rename or a move in the app) and **`forget(path)`** (after trashing) keep the selection and every expanded key inside that path in step. Changes made in Finder are not followed; the selection then simply reads as `null`.
 
-### `projects.ts` — Projects, Tutorials and images on disk
+### `projects.ts` — Projects, Groups, Tutorials and images on disk
 
-`createProjectsService({ getRoot, trash })`. The folders are the only record of Projects and Tutorials ([ADR 0002](../../docs/adr/0002-folders-are-the-only-record.md)): every visible subfolder of the Projects folder is a Project, every visible subfolder of a Project is a Tutorial, and a folder's name is its name.
+`createProjectsService({ getRoot, trash })`. The folders are the record of what exists ([ADR 0002](../../docs/adr/0002-folders-are-the-only-record.md)): every visible subfolder of the Projects folder is a Project, and inside a Project every visible subfolder is a **Group** or a **Tutorial**, nested to any depth. A folder's name is its name. Everything is addressed by its **path**, the folder names from the Project down (`['Python', 'Setup', 'Install']`).
 
-| Function                                               | What it does                                                                                                                                   |
-| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `listTree()`                                           | Projects and their Tutorials, both **newest first** by folder creation time (then by name).                                                    |
-| `createProject`, `createTutorial`                      | `mkdir` with the trimmed name; returns `{ error }` for an invalid or already used name.                                                        |
-| `renameProject`, `renameTutorial`                      | `rename`; a case-only change ("git" → "Git") is allowed.                                                                                       |
-| `countTutorials`, `trashProject`, `trashTutorial`      | For the confirmation message, then the folder goes to the Trash.                                                                               |
-| `tutorialPath(ref)`                                    | The Tutorial's folder, or throws when it does not exist.                                                                                       |
-| `listImages(ref)`                                      | Image files directly in the Tutorial folder, sorted by name (numbers in names compared as numbers), each with a `version` (its modified time). |
-| `imagePath(ref, file)`, `trashImage`, `trashAllImages` | One listed image's path; one image or all of them to the Trash (all: one at a time, stopping at the first failure).                            |
+**Group or Tutorial** ([ADR 0003](../../docs/adr/0003-groups-are-marked-with-a-hidden-file.md)), decided by `classify(folder)` in this order:
+
+1. it holds the hidden file `.tuto-group` (`GROUP_TAG`) → Group;
+2. it holds an image file → Tutorial, and its subfolders are ignored (as in v0.2, so screenshots never disappear);
+3. it holds a visible, non-link subfolder → Group (so nested folders made in Finder work);
+4. otherwise (empty, or only other files) → Tutorial.
+
+Groups created in the app get the tag, so an empty new Group is not mistaken for an empty Tutorial. v0.2 data needs no migration.
+
+| Function                                                | What it does                                                                                                                                                                                                                        |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `listTree()`                                            | Every Project and what it holds, recursively. At each level **Groups first, then Tutorials**, each **newest first** by folder creation time (then by name).                                                                         |
+| `createProject(name)`, `createItem(parent, kind, name)` | `mkdir` with the trimmed name inside the Projects folder, or inside a Project or Group; a Group also gets its tag (if writing the tag fails, the folder is removed again). Returns `{ error }` for an invalid or already used name. |
+| `rename(path, to)`                                      | Any Project, Group or Tutorial; a case-only change ("git" → "Git") is allowed.                                                                                                                                                      |
+| `countTutorials(path)`, `trash(path)`                   | Tutorials at any depth inside a Project or Group (for the confirmation message); the folder to the Trash.                                                                                                                           |
+| `move(path, destination)`                               | Moves a Tutorial or Group into a Project or Group (see below).                                                                                                                                                                      |
+| `tutorialPath(path)`                                    | The Tutorial's folder, or throws when the path is not an existing Tutorial.                                                                                                                                                         |
+| `listImages(path)`                                      | Image files directly in the Tutorial folder, sorted by name (numbers in names compared as numbers), each with a `version` (its modified time).                                                                                      |
+| `imagePath(path, file)`, `trashImage`, `trashAllImages` | One listed image's path; one image or all of them to the Trash (all: one at a time, stopping at the first failure).                                                                                                                 |
+
+**`move`** refuses, in order: a Project ("Projects can't be moved."); a path or destination that does not exist; a destination that is a Tutorial; a destination inside the item itself ("A Group can't go inside itself."). Moving onto the current parent does nothing. A name already used at the destination (ignoring case) is refused with "That name is already used in "…"."; otherwise the folder is renamed into place. `EXDEV` becomes "Can't move between disks."
 
 Rules:
 
-- **Nothing outside the Projects folder can be reached.** Every incoming name must be an existing direct child found by `readdir` (never trusted by joining paths), so `..`, `a/b` and empty names are refused. **Symbolic links are ignored**: a linked folder is not a Project or Tutorial, and a linked image is not listed, so a link can never lead outside the Projects folder.
+- **Nothing outside the Projects folder can be reached.** A path is resolved one name at a time: each must be an existing, visible direct child found by `readdir` (never trusted by joining paths), so `..`, `a/b` and empty names are refused. **Symbolic links are ignored**: a linked folder is not a Project, Group or Tutorial, and a linked image is not listed, so a link can never lead outside the Projects folder.
 - New names are checked with [`validateName`](../shared/README.md) (also used by the renderer for instant feedback). Names are compared **ignoring case**, because APFS is case-insensitive by default, and against files as well as folders, since `mkdir` fails on either.
-- Hidden entries (names starting with `.`) are skipped everywhere.
-- What counts as an image is [`isImageFile`](../shared/README.md): png, jpg, jpeg, gif, webp, in any case. Subfolders of a Tutorial are ignored.
+- Hidden entries (names starting with `.`) are skipped everywhere; that is also why the tag file never shows up.
+- What counts as an image is [`isImageFile`](../shared/README.md): png, jpg, jpeg, gif, webp, in any case.
+- Recursion stops at 64 levels, as a guard; links are never followed, so there are no cycles.
 - `trash` is `shell.trashItem`, passed in from `index.ts`. Nothing is ever deleted permanently.
 
 ### `tutorialRecording.ts` — the rules for recording a Tutorial
@@ -172,11 +185,11 @@ How a Capture is made:
 
 The window shows a Tutorial's images through a custom scheme, `tuto-image://`, instead of `file://`, so the renderer never gets file paths or file access.
 
-| File                                   | Role                                                                                                                                                                                         |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`imageUrl.ts`](imageUrl.ts)           | Pure. `imageUrl(size, ref, file, version)` → `tuto-image://<size>/<project>/<tutorial>/<file>?v=<version>`, each segment URI-encoded; `parseImageUrl` reverses it and rejects anything else. |
-| [`thumbnails.ts`](thumbnails.ts)       | Pure. `createThumbnailer({ render })`: resized copies, cached in memory.                                                                                                                     |
-| [`imageProtocol.ts`](imageProtocol.ts) | Glue. `registerImageScheme()` (before ready) and `handleImages(projects)` (inside ready): URL → `parseImageUrl` → `projects.imagePath` → thumbnail.                                          |
+| File                                   | Role                                                                                                                                                                                                                                                    |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`imageUrl.ts`](imageUrl.ts)           | Pure. `imageUrl(size, tutorial, file, version)` → `tuto-image://<size>/<project>/<group>/…/<tutorial>/<file>?v=<version>`, each segment URI-encoded; `parseImageUrl` reverses it (at least a Project, a Tutorial and a file) and rejects anything else. |
+| [`thumbnails.ts`](thumbnails.ts)       | Pure. `createThumbnailer({ render })`: resized copies, cached in memory.                                                                                                                                                                                |
+| [`imageProtocol.ts`](imageProtocol.ts) | Glue. `registerImageScheme()` (before ready) and `handleImages(projects)` (inside ready): URL → `parseImageUrl` → `projects.imagePath` → thumbnail.                                                                                                     |
 
 - **Sizes:** `thumb` is 320 px wide (the strip), `preview` 1600 px wide (the large view); never enlarged. Rendered with `sharp` as WebP (quality 90). A Retina Screenshot is several MB, so the window never loads the original.
 - **Cache:** by path, version and size, at most 300 entries (least recently used dropped first), at most 4 renders at a time, and a request for an image that is already rendering shares that render. A failed render is not cached.

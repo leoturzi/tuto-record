@@ -6,7 +6,7 @@ const settings: SettingsState = {
   projectsFolder: '/p',
   projectsFolderProblem: null,
   selectedTutorial: null,
-  expandedProjects: []
+  expanded: []
 }
 
 describe('buildSettingsView', () => {

@@ -1,108 +1,174 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildSidebarRows,
+  canDrop,
   editingSiblings,
   sidebarEmptyMessage,
-  type Draft
+  type Draft,
+  type SidebarRow
 } from '../src/renderer/src/sidebar/treeView'
 import type { ProjectNode } from '../src/shared/ipc'
 
 const tree: ProjectNode[] = [
-  { name: 'Python', tutorials: [{ name: 'Install' }, { name: 'Venv' }] },
-  { name: 'Git', tutorials: [{ name: 'Basics' }] }
+  {
+    name: 'Python',
+    children: [
+      {
+        kind: 'group',
+        name: 'Setup',
+        children: [
+          { kind: 'group', name: 'macOS', children: [{ kind: 'tutorial', name: 'Install' }] },
+          { kind: 'tutorial', name: 'Venv' }
+        ]
+      },
+      { kind: 'tutorial', name: 'Quick start' }
+    ]
+  },
+  { name: 'Git', children: [{ kind: 'tutorial', name: 'Basics' }] }
 ]
 const draft: Draft = { value: 'x', error: null }
-const shape = (rows: ReturnType<typeof buildSidebarRows>): string[] =>
-  rows.map((r) => `${r.kind}:${r.name}${r.editing ? '*' : ''}`)
+const shape = (rows: SidebarRow[]): string[] =>
+  rows.map((r) => `${'  '.repeat(r.depth)}${r.kind}:${r.name}${r.editing ? '*' : ''}`)
+const all = ['Python', 'Python/Setup', 'Python/Setup/macOS', 'Git']
 
 describe('buildSidebarRows', () => {
-  it('keeps main’s order and shows Tutorials only under expanded Projects', () => {
-    const rows = buildSidebarRows(tree, ['Python'], null, null, draft)
-    expect(shape(rows)).toEqual([
+  it('keeps main’s order and shows children only under expanded Projects and Groups', () => {
+    expect(shape(buildSidebarRows(tree, ['Python'], null, null, draft))).toEqual([
       'project:Python',
-      'tutorial:Install',
-      'tutorial:Venv',
+      '  group:Setup',
+      '  tutorial:Quick start',
       'project:Git'
     ])
-    expect(rows[0]).toMatchObject({ expanded: true, depth: 0 })
-    expect(rows[1]).toMatchObject({ depth: 1, project: 'Python' })
-    expect(rows[3].expanded).toBe(false)
+    const rows = buildSidebarRows(tree, all, null, null, draft)
+    expect(shape(rows)).toEqual([
+      'project:Python',
+      '  group:Setup',
+      '    group:macOS',
+      '      tutorial:Install',
+      '    tutorial:Venv',
+      '  tutorial:Quick start',
+      'project:Git',
+      '  tutorial:Basics'
+    ])
+    expect(rows[3]).toMatchObject({
+      key: 'Python/Setup/macOS/Install',
+      path: ['Python', 'Setup', 'macOS', 'Install'],
+      depth: 3
+    })
+    expect(rows[1].expanded).toBe(true)
   })
 
-  it('marks the selected Tutorial', () => {
-    const rows = buildSidebarRows(
-      tree,
-      ['Python', 'Git'],
-      { project: 'Git', tutorial: 'Basics' },
-      null,
-      draft
+  it('does not open a Group just because its Project is open', () => {
+    expect(shape(buildSidebarRows(tree, ['Python', 'Python/Setup'], null, null, draft))).toContain(
+      '    group:macOS'
     )
-    expect(rows.filter((r) => r.selected).map((r) => r.key)).toEqual(['tutorial/Git/Basics'])
+    expect(
+      shape(buildSidebarRows(tree, ['Python', 'Python/Setup'], null, null, draft))
+    ).not.toContain('      tutorial:Install')
   })
 
-  it('ignores expanded names that no longer exist', () => {
-    expect(shape(buildSidebarRows(tree, ['Gone'], null, null, draft))).toEqual([
+  it('marks the selected Tutorial at any depth', () => {
+    const rows = buildSidebarRows(tree, all, ['Python', 'Setup', 'macOS', 'Install'], null, draft)
+    expect(rows.filter((r) => r.selected).map((r) => r.key)).toEqual(['Python/Setup/macOS/Install'])
+  })
+
+  it('ignores expanded keys that no longer exist', () => {
+    expect(shape(buildSidebarRows(tree, ['Gone', 'Python/Gone'], null, null, draft))).toEqual([
       'project:Python',
       'project:Git'
     ])
   })
 
   it('puts a new Project row first', () => {
-    const rows = buildSidebarRows(tree, [], null, { kind: 'new-project' }, draft)
-    expect(shape(rows)[0]).toBe('new-project:*')
-    expect(rows[0].editing).toBe(draft)
-  })
-
-  it('puts a new Tutorial row first in its Project, expanding it', () => {
-    const rows = buildSidebarRows(tree, [], null, { kind: 'new-tutorial', project: 'Git' }, draft)
-    expect(shape(rows)).toEqual([
-      'project:Python',
-      'project:Git',
-      'new-tutorial:*',
-      'tutorial:Basics'
-    ])
-    expect(rows[1].expanded).toBe(true)
-  })
-
-  it('turns the renamed row into a field and keeps its key', () => {
-    const project = buildSidebarRows(
+    const rows = buildSidebarRows(
       tree,
       [],
       null,
-      { kind: 'rename-project', project: 'Git' },
+      { kind: 'new', parent: [], what: 'project' },
       draft
     )
-    expect(shape(project)).toEqual(['project:Python', 'project:Git*'])
-    expect(project[1].key).toBe('project/Git')
+    expect(shape(rows)[0]).toBe('new:*')
+    expect(rows[0]).toMatchObject({ creating: 'project', path: [], depth: 0, editing: draft })
+  })
 
-    const tutorial = buildSidebarRows(
+  it('puts a new row first inside its Group, showing the Group expanded', () => {
+    const rows = buildSidebarRows(
       tree,
       ['Python'],
       null,
-      { kind: 'rename-tutorial', ref: { project: 'Python', tutorial: 'Venv' } },
+      { kind: 'new', parent: ['Python', 'Setup'], what: 'group' },
       draft
     )
-    expect(shape(tutorial)).toContain('tutorial:Venv*')
-    expect(tutorial.find((r) => r.editing)?.key).toBe('tutorial/Python/Venv')
+    expect(shape(rows)).toEqual([
+      'project:Python',
+      '  group:Setup',
+      '    new:*',
+      '    group:macOS',
+      '    tutorial:Venv',
+      '  tutorial:Quick start',
+      'project:Git'
+    ])
+    expect(rows[2]).toMatchObject({ creating: 'group', path: ['Python', 'Setup'] })
+  })
+
+  it('turns the renamed row into a field and keeps its key', () => {
+    const rows = buildSidebarRows(
+      tree,
+      all,
+      null,
+      { kind: 'rename', path: ['Python', 'Setup', 'macOS'] },
+      draft
+    )
+    const editing = rows.filter((r) => r.editing)
+    expect(editing.map((r) => r.key)).toEqual(['Python/Setup/macOS'])
   })
 })
 
 describe('editingSiblings', () => {
-  it('compares Projects with Projects and Tutorials with their Project’s Tutorials', () => {
-    expect(editingSiblings(tree, { kind: 'new-project' })).toEqual({ siblings: ['Python', 'Git'] })
-    expect(editingSiblings(tree, { kind: 'rename-project', project: 'Git' })).toEqual({
+  it('compares a name with the other names at its level', () => {
+    expect(editingSiblings(tree, { kind: 'new', parent: [], what: 'project' })).toEqual({
+      siblings: ['Python', 'Git']
+    })
+    expect(editingSiblings(tree, { kind: 'new', parent: ['Python'], what: 'group' })).toEqual({
+      siblings: ['Setup', 'Quick start']
+    })
+    expect(
+      editingSiblings(tree, { kind: 'new', parent: ['Python', 'Setup', 'macOS'], what: 'tutorial' })
+    ).toEqual({ siblings: ['Install'] })
+    expect(editingSiblings(tree, { kind: 'rename', path: ['Git'] })).toEqual({
       siblings: ['Python', 'Git'],
       current: 'Git'
     })
-    expect(editingSiblings(tree, { kind: 'new-tutorial', project: 'Python' })).toEqual({
-      siblings: ['Install', 'Venv']
+    expect(editingSiblings(tree, { kind: 'rename', path: ['Python', 'Setup', 'Venv'] })).toEqual({
+      siblings: ['macOS', 'Venv'],
+      current: 'Venv'
     })
-    expect(
-      editingSiblings(tree, {
-        kind: 'rename-tutorial',
-        ref: { project: 'Git', tutorial: 'Basics' }
-      })
-    ).toEqual({ siblings: ['Basics'], current: 'Basics' })
+  })
+})
+
+describe('canDrop', () => {
+  const rows = buildSidebarRows(tree, all, null, null, draft)
+  const row = (key: string): SidebarRow => rows.find((r) => r.key === key)!
+
+  it('accepts a Tutorial or Group onto another Project or Group', () => {
+    expect(canDrop(row('Python/Quick start'), row('Python/Setup'))).toBe(true)
+    expect(canDrop(row('Python/Quick start'), row('Git'))).toBe(true)
+    expect(canDrop(row('Python/Setup/macOS'), row('Git'))).toBe(true)
+    expect(canDrop(row('Python/Setup/macOS'), row('Python'))).toBe(true)
+  })
+
+  it('refuses Projects, Tutorials as targets, a Group into itself, and the current parent', () => {
+    expect(canDrop(row('Python'), row('Git'))).toBe(false)
+    expect(canDrop(row('Python/Quick start'), row('Git/Basics'))).toBe(false)
+    expect(canDrop(row('Python/Setup'), row('Python/Setup'))).toBe(false)
+    expect(canDrop(row('Python/Setup'), row('Python/Setup/macOS'))).toBe(false)
+    expect(canDrop(row('Python/Quick start'), row('Python'))).toBe(false)
+    expect(canDrop(row('Python/Setup/macOS/Install'), row('Python/Setup/macOS'))).toBe(false)
+  })
+
+  it('refuses rows that are being edited', () => {
+    const editing = { ...row('Python/Quick start'), editing: draft }
+    expect(canDrop(editing, row('Git'))).toBe(false)
   })
 })
 

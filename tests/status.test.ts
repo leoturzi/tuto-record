@@ -5,8 +5,8 @@ import type { SettingsState } from '../src/shared/ipc'
 const good: SettingsState = {
   projectsFolder: '/p',
   projectsFolderProblem: null,
-  selectedTutorial: { project: 'Python', tutorial: 'Install' },
-  expandedProjects: []
+  selectedTutorial: ['Python', 'Install'],
+  expanded: []
 }
 
 describe('buildStatus', () => {
