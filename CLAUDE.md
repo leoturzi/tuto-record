@@ -1,6 +1,6 @@
 # tuto-record: instructions for Claude
 
-An Electron + TypeScript macOS app that saves a screenshot of every display on each left click. Start with [README.md](README.md) for what it does, [src/README.md](src/README.md) for how to build and run it, and with [GLOSSARY.md](GLOSSARY.md) for the vocabulary (Projects folder, Project, Tutorial, Recording, Click, Capture, Screenshot, Marker). Use those terms in code, comments, UI text and docs.
+An Electron + TypeScript macOS app that saves a screenshot of every display on each left click. Start with [README.md](README.md) for what it does, [src/README.md](src/README.md) for how to build and run it, and with [GLOSSARY.md](GLOSSARY.md) for the vocabulary (Projects folder, Project, Group, Tutorial, Recording, Click, Capture, Screenshot, Marker). Use those terms in code, comments, UI text and docs.
 
 ## Documentation rule
 
@@ -24,6 +24,19 @@ Related documents, each with one job:
 | [docs/adr/](docs/adr/)         | Decisions that are hard to reverse, surprising and a real trade-off |
 | [plans/](plans/)               | Plans and their progress notes                                      |
 | `**/README.md`                 | How the code in that folder works (see the rule above)              |
+
+## Change workflow
+
+Every change, however small (code, docs, config), goes through a branch and a pull request. Nothing is committed directly to `main`.
+
+1. **Branch from an up-to-date `main`.** `git switch main && git pull`, then `git switch -c <type>/<short-name>`, where `<type>` is `feat`, `fix`, `docs`, `refactor` or `chore` and the name is kebab-case (`feat/groups-drag-and-drop`, `docs/pr-workflow`). One branch per change.
+2. **Commit on the branch.** Before committing, run `npm run typecheck`, `npm run lint` and `npm test`, and follow the documentation rule above.
+3. **Push the branch** to `origin` (`git push -u origin <branch>`).
+4. **Open a pull request into `main`** with `gh pr create`. The description says what changed and why, how it was tested (including what was not tested, such as manual checks still pending), and which docs were updated.
+5. **Wait for approval.** The user reviews and approves the pull request. Do not merge it, and do not push to `main`, unless the user says to after approving it.
+6. **After the merge**, switch back to `main` and pull, and delete the branch locally (the remote branch is deleted with the merge, or by hand).
+
+Follow-up changes to an open pull request go on its branch, as new commits.
 
 ## Code conventions
 
