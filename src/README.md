@@ -70,9 +70,23 @@ npm run dev
 npm run build:mac
 ```
 
-Open `dist/tuto-record-0.3.0.dmg` and drag **tuto-record** into **Applications**. The app is ad-hoc signed (by `build/adhocSign.cjs`), not notarized, so macOS may block the first launch of a copy that was downloaded or sent to you: right-click the app and choose **Open**, or allow it under System Settings → Privacy & Security.
+Open `dist/tuto-record-0.3.0.dmg` and drag **tuto-record** into **Applications**. The app is ad-hoc signed (by `build/adhocSign.cjs`), not notarized, so macOS blocks the first launch of a copy that was downloaded or sent to you. On macOS 15 (Sequoia) and later, open it once and then press **Open Anyway** under System Settings → Privacy & Security (right-click → **Open** no longer works there); on macOS 14 and earlier, right-click the app and choose **Open**. A copy you built yourself is not quarantined and opens normally.
 
 The `.app` is about 290 MB and the `.dmg` about 116 MB. Most of it is Electron itself (the Chromium framework alone is about 250 MB), which any Electron app carries. The build keeps only the English language files and excludes the binaries for other platforms and for Intel Macs.
+
+### Publish a release
+
+Releases are how people get the app: a GitHub Release with the `.dmg` attached, tagged `v<version>` on `main`. After the version bump is merged:
+
+```bash
+git switch main && git pull && npm run build:mac
+```
+
+```bash
+gh release create v0.3.0 dist/tuto-record-0.3.0.dmg --target main --title "tuto-record 0.3.0" --notes-file notes.md
+```
+
+The notes say what changed, repeat the install steps from the [project README](../README.md#install) (including **Open Anyway** on macOS 15), and give the dmg's SHA-256 (`shasum -a 256 dist/*.dmg`).
 
 ## Troubleshooting
 

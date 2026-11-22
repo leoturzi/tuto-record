@@ -4,7 +4,19 @@
 
 A macOS app that saves a screenshot of every display each time you click, so your clicks can later be turned into a step-by-step tutorial. Pick a Tutorial, press Start, use your computer as usual, press Stop: the Tutorial now holds one screenshot per display per click, with a cursor arrow on a see-through red circle showing where you clicked, and the window shows them all.
 
-Version 0.3 runs on Apple Silicon Macs.
+Version 0.3 runs on Apple Silicon Macs (M1 or later).
+
+## Install
+
+1. Download the latest `tuto-record-<version>.dmg` from the [Releases page](https://github.com/leoturzi/tuto-record/releases).
+2. Open it and drag **tuto-record** into **Applications**.
+3. Open the app. It is not notarized by Apple, so macOS blocks the first launch:
+   - **macOS 15 (Sequoia) or later:** after the warning, go to **System Settings → Privacy & Security**, scroll down to the message about tuto-record and press **Open Anyway**, then confirm. Right-clicking the app and choosing **Open** no longer gets past the warning on these versions.
+   - **macOS 14 or earlier:** right-click the app in Applications and choose **Open**, then **Open** again in the dialog.
+
+   This is needed only once per version.
+
+After installing a new version, macOS may ask for the two permissions again (see below).
 
 ## Using it
 
@@ -99,7 +111,7 @@ Each counted click is one **capture**: one PNG per connected display, saved in t
 - **Screenshots are taken just after the click**, about 0.1 to 0.3 seconds later, so if the click opens a menu or changes a page, the screenshot may already show the result.
 - **The cursor drawn is always an arrow**, whatever the real pointer looked like (text cursor, hand, resize handle). The real pointer is not part of a screen capture.
 - **Another app may own ⌃⌥⌘R.** If so, the window warns you; stop a recording by clicking the Dock icon instead.
-- **The app is not notarized by Apple.** If you receive a copy from someone else, macOS may block the first launch: right-click the app, choose **Open**, or allow it under System Settings → Privacy & Security.
+- **The app is not notarized by Apple**, so macOS blocks its first launch. [Install](#install) says how to open it on each macOS version.
 
 ## More documentation
 
