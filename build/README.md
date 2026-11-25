@@ -18,6 +18,7 @@ The icon files are finished assets, edited by hand when the logo changes. How th
 - **Centred artwork:** the camera in the original logo sits about 46 px above the middle of the image, so the artwork was moved down by that amount (on the flat green background) before resizing.
 - **macOS (`icon.icns`)**: macOS does not round or pad custom icons, so it is done in the image: the artwork is clipped to a squircle (a superellipse with exponent 5) 824 px wide inside a 1024 px canvas, which is Apple's icon grid, with a soft shadow (32 % black, blurred, shifted 12 px down). The ten sizes of an `.iconset` (16 to 512 px, each with an `@2x` variant) are packed with `iconutil -c icns`.
 - **Windows (`icon.ico`)**: a full-bleed rounded square with no margin (corner radius 18 % of the width), in the sizes 16, 24, 32, 48, 64, 128 and 256 px, stored as PNG data inside the `.ico`.
+- **Watermark logo:** it is also made from `icon.png`, so redo it when the logo changes ([`resources`](../resources/README.md#remaking-watermark-logopng)).
 - **Small sizes**: at 16 px the shutter lines of the lens blur together but the camera shape stays recognisable.
 - The script that originally produced these files was removed once they were final; it is in the git history (`build/makeIcons.mjs` in the commit "Add app logo and generate icons from it").
 - macOS caches icons. After installing a new build, the Dock or Finder may keep showing the old one until you relaunch the Dock (`killall Dock`) or Finder.

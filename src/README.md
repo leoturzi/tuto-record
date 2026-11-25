@@ -70,7 +70,7 @@ npm run dev
 npm run build:mac
 ```
 
-Open `dist/tuto-record-0.3.1.dmg` and drag **tuto-record** into **Applications**. The app is ad-hoc signed (by `build/adhocSign.cjs`), not notarized, so macOS blocks the first launch of a copy that was downloaded or sent to you. On macOS 15 (Sequoia) and later, open it once and then press **Open Anyway** under System Settings → Privacy & Security (right-click → **Open** no longer works there); on macOS 14 and earlier, right-click the app and choose **Open**. A copy you built yourself is not quarantined and opens normally.
+Open `dist/tuto-record-0.3.2.dmg` and drag **tuto-record** into **Applications**. The app is ad-hoc signed (by `build/adhocSign.cjs`), not notarized, so macOS blocks the first launch of a copy that was downloaded or sent to you. On macOS 15 (Sequoia) and later, open it once and then press **Open Anyway** under System Settings → Privacy & Security (right-click → **Open** no longer works there); on macOS 14 and earlier, right-click the app and choose **Open**. A copy you built yourself is not quarantined and opens normally.
 
 **What goes into the app.** `files` in [`electron-builder.yml`](../electron-builder.yml) is an allow-list: `out/**`, `resources/**` and `package.json`, plus the production `node_modules` that electron-builder adds itself. Anything else in the project folder stays out, including local folders such as test recordings with screenshots. If the app needs a new file at runtime, add it to the list; do not replace the list with exclusions. Check the result before publishing:
 
@@ -91,7 +91,7 @@ git switch main && git pull && npm run build:mac
 ```
 
 ```bash
-gh release create v0.3.1 dist/tuto-record-0.3.1.dmg --target main --title "tuto-record 0.3.1" --notes-file notes.md
+gh release create v0.3.2 dist/tuto-record-0.3.2.dmg --target main --title "tuto-record 0.3.2" --notes-file notes.md
 ```
 
 The notes say what changed, repeat the install steps from the [project README](../README.md#install) (including **Open Anyway** on macOS 15), and give the dmg's SHA-256 (`shasum -a 256 dist/*.dmg`).

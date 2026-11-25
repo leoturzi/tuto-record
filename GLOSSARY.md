@@ -43,3 +43,7 @@ _Avoid_: Screen grab, snapshot, image
 **Marker**:
 A translucent red circle with an arrow cursor in its middle, drawn on a Screenshot where the Click that triggered the Capture happened (the cursor's tip is the Click position). Only the Screenshot of the clicked display has one.
 _Avoid_: Highlight, dot
+
+**Watermark**:
+The camera logo and the app's name on a small translucent plate, drawn in a corner of every Screenshot.
+_Avoid_: Stamp, badge, logo overlay

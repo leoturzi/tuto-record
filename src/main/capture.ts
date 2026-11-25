@@ -25,15 +25,23 @@ export interface CaptureDeps {
   grab(maxSize: { width: number; height: number }): Promise<CapturedSource[]>
   /** Resolves to the folder for this Capture (the selected Tutorial's), or throws a readable message. */
   getFolder(): Promise<string>
-  /** Draws the Marker on a PNG and returns the new PNG. */
-  drawMarker(png: Buffer, spec: MarkerSpec): Promise<Buffer>
+  /**
+   * Draws the Watermark and, when `marker` is given, the Marker on a Screenshot of `size` pixels,
+   * and returns the PNG to save.
+   */
+  drawOverlays(
+    png: Buffer,
+    size: { width: number; height: number },
+    marker: MarkerSpec | null
+  ): Promise<Buffer>
   writeFile(path: string, data: Buffer): Promise<void>
   removeFile(path: string): Promise<void>
 }
 
 /**
  * Builds the function that turns one Click into a Capture: one PNG per display, saved in the
- * selected Tutorial's folder, with a Marker on the display that was clicked. Resolves to the saved
+ * selected Tutorial's folder, each with the Watermark, and with a Marker on the display that was
+ * clicked. Resolves to the saved
  * file paths. If any display fails, the files already written for this Capture are removed and the
  * error is thrown.
  */
@@ -67,13 +75,8 @@ export function createCapturer(deps: CaptureDeps): (click: ClickEvent) => Promis
             ? source.image
             : source.image.resize(target.width, target.height)
         const path = join(folder, screenshotFilename(click.time, number))
-        const png = image.toPNG()
-        await deps.writeFile(
-          path,
-          display.id === clicked?.id
-            ? await deps.drawMarker(png, markerSpec(display, click.x, click.y))
-            : png
-        )
+        const marker = display.id === clicked?.id ? markerSpec(display, click.x, click.y) : null
+        await deps.writeFile(path, await deps.drawOverlays(image.toPNG(), target, marker))
         written.push(path)
         return path
       })

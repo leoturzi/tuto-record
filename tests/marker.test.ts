@@ -1,9 +1,15 @@
 import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
-import { CIRCLE_OPACITY, drawMarker, markerSvg } from '../src/main/marker'
+import { CIRCLE_OPACITY, markerLayer, markerSvg } from '../src/main/marker'
 import type { MarkerSpec } from '../src/main/markerGeometry'
 
 const GRAY = { r: 120, g: 120, b: 120 }
+
+const drawMarker = (png: Buffer, spec: MarkerSpec): Promise<Buffer> =>
+  sharp(png)
+    .composite([markerLayer(spec)])
+    .png()
+    .toBuffer()
 
 async function grayPng(width: number, height: number): Promise<Buffer> {
   return sharp({
@@ -56,7 +62,7 @@ const TINTED_GRAY: Rgb = [
 const spec: MarkerSpec = { width: 400, height: 300, scale: 2, cx: 200, cy: 150, radius: 48 }
 const CENTRE = { x: 212, y: 169 }
 
-describe('drawMarker', () => {
+describe('markerLayer', () => {
   it('keeps the image size and format', async () => {
     const out = await drawMarker(await grayPng(400, 300), spec)
     const meta = await sharp(out).metadata()
