@@ -1,6 +1,6 @@
 # Main process (`src/main`)
 
-Everything privileged lives here: permissions, the global click hook, screen capture, the Projects folder on disk, the image protocol, windows, menus and the Dock. The renderer ([`src/renderer`](../renderer/README.md)) only shows state and sends commands; it reaches this code through the typed [IPC contract](../shared/README.md) and the [preload script](../preload/README.md). Terms such as **Projects folder**, **Project**, **Group**, **Tutorial**, **Recording**, **Click**, **Capture**, **Screenshot** and **Marker** are defined in [GLOSSARY.md](../../GLOSSARY.md); this document uses them in that sense.
+Everything privileged lives here: permissions, the global click hook, screen capture, the Projects folder on disk, the image protocol, windows, menus and the Dock. The renderer ([`src/renderer`](../renderer/README.md)) only shows state and sends commands; it reaches this code through the typed [IPC contract](../shared/README.md) and the [preload script](../preload/README.md). Terms such as **Projects folder**, **Project**, **Group**, **Tutorial**, **Recording**, **Click**, **Capture**, **Screenshot**, **Marker** and **Watermark** are defined in [GLOSSARY.md](../../GLOSSARY.md); this document uses them in that sense.
 
 ## How it fits together
 
@@ -15,7 +15,7 @@ Everything privileged lives here: permissions, the global click hook, screen cap
  (+ folderCheck.ts)  ├─ ipc.ts ─┤ tutorialRecording├───┤ recorder├┤
  projects.ts ────────┤          │ (readiness,      │   │ state   │└── capture function ── capture.ts
  (folders, images,   │          │  Record again)   │   │ machine │    (+ captureElectron, naming,
-  Trash)             │          └──────────────────┘   └────┬────┘     markerGeometry, marker)
+  Trash)             │          └──────────────────┘   └────┬────┘     overlays, watermark, marker)
  confirmElectron.ts ─┘                                      │
  imageProtocol.ts ── tuto-image:// (imageUrl, thumbnails)    shortcut.ts ── stop ──┘
 ```
@@ -26,7 +26,7 @@ Everything privileged lives here: permissions, the global click hook, screen cap
 
 1. [`clickListener.ts`](clickListener.ts) gets a global `mousedown` from `uiohook-napi`; [`click.ts`](click.ts) keeps it only if it is the left button (`button === 1`) and turns it into a `ClickEvent` `{x, y, time}`.
 2. [`recorder.ts`](recorder.ts) drops it if it is within 300 ms of the last counted Click, otherwise counts it, updates the Dock badge and calls the capture function.
-3. [`capture.ts`](capture.ts) asks for the selected Tutorial's folder, grabs every display with one `desktopCapturer` call, resizes each image to the display's real pixel size, draws the Marker on the clicked display's image and writes one PNG per display.
+3. [`capture.ts`](capture.ts) asks for the selected Tutorial's folder, grabs every display with one `desktopCapturer` call, resizes each image to the display's real pixel size, draws the Watermark on every image and the Marker on the clicked display's image, and writes one PNG per display.
 4. The recorder pushes the new state to the main window (`recorder:state`). If the capture throws, the recorder stops with the error and `index.ts` shows a notification.
 
 ## Modules
@@ -163,13 +163,16 @@ idle ──start()──► starting ──(300 ms)──► recording
 
 ### Capture
 
-| File                                       | Role                                                                                                                 |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| [`capture.ts`](capture.ts)                 | `createCapturer(deps)` returns `(click) => Promise<string[]>` (the saved paths).                                     |
-| [`captureElectron.ts`](captureElectron.ts) | Real `desktopCapturer`, `screen`, `NativeImage` (adapted to `ImageLike`) and file writes. Also exports `removeFile`. |
-| [`naming.ts`](naming.ts)                   | File names, display numbering, pixel sizes.                                                                          |
-| [`markerGeometry.ts`](markerGeometry.ts)   | Which display was clicked and where the Marker goes.                                                                 |
-| [`marker.ts`](marker.ts)                   | Draws the Marker with `sharp`.                                                                                       |
+| File                                           | Role                                                                                                                                                                            |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`capture.ts`](capture.ts)                     | `createCapturer(deps)` returns `(click) => Promise<string[]>` (the saved paths).                                                                                                |
+| [`captureElectron.ts`](captureElectron.ts)     | Real `desktopCapturer`, `screen`, `NativeImage` (adapted to `ImageLike`) and file writes. Also exports `removeFile`.                                                            |
+| [`naming.ts`](naming.ts)                       | File names, display numbering, pixel sizes.                                                                                                                                     |
+| [`markerGeometry.ts`](markerGeometry.ts)       | Which display was clicked and where the Marker goes.                                                                                                                            |
+| [`marker.ts`](marker.ts)                       | The Marker as a `sharp` layer (`markerLayer`).                                                                                                                                  |
+| [`watermarkGeometry.ts`](watermarkGeometry.ts) | Pure. The Watermark's sizes for a Screenshot of a given size.                                                                                                                   |
+| [`watermark.ts`](watermark.ts)                 | The Watermark as a `sharp` layer. `createWatermark({ loadLogo, enabled? })` returns `(size) => Promise<layer \| null>`; also holds its colours, opacities, text and off switch. |
+| [`overlays.ts`](overlays.ts)                   | `createOverlays({ watermark })` returns `(png, size, marker) => Promise<Buffer>`: draws both layers in one pass.                                                                |
 
 How a Capture is made:
 
@@ -177,9 +180,15 @@ How a Capture is made:
 - **One `getSources` call for all displays.** Its thumbnail size is the largest display's pixel size (points × scale factor). Smaller displays come back scaled to fit that box, so each image is resized to its own real pixel size when it differs.
 - **Matching:** a source belongs to a display when `source.display_id === String(display.id)`.
 - **File names:** `YYYY-MM-DD_HH-mm-ss-SSS_d<N>.png`, local time of the Click. `d1` is the primary display; the others follow left to right, then top to bottom. Sorted by name they come out in Click order, which is the order the preview shows.
-- **All or nothing:** if any display fails (empty image, missing source, write error, Marker error), the files already written for that Capture are removed and the error is thrown.
+- **All or nothing:** if any display fails (empty image, missing source, write error, Watermark or Marker error), the files already written for that Capture are removed and the error is thrown.
 - **Marker:** only the clicked display's image gets one, a translucent red circle plus an arrow cursor with a white outline. The cursor's tip is the Click position; the circle (24 pt radius multiplied by the scale factor, filled at `CIRCLE_OPACITY` = 0.3, no outline) is centred on the arrow so the cursor looks centred in it. The low opacity keeps text and controls under the circle readable. The real pointer is not in the screen capture, so the cursor is always an arrow. Coordinates: Click positions are global points; a display's `bounds` are in points and may be negative (displays left of or above the primary).
-- Displays are numbered and sized in `naming.ts`; `markerGeometry.ts` has no `sharp` import so it stays unit-testable.
+- **Watermark:** every Screenshot gets one, in the bottom-right corner: the camera logo ([`resources/watermark-logo.png`](../../resources/README.md)) and "Tuto-Record" in `#e6e6e6` at 85 % opacity, on a rounded plate of black at 45 %. It is part of the saved PNG, and no clean copy is kept.
+  - **Size:** everything follows the Screenshot's shorter side: the logo is 3 % of it (at least 14 px) and the margin 2 %; the text, spacing and corners follow the logo's height ([`watermarkGeometry.ts`](watermarkGeometry.ts)).
+  - **Off switch:** set `WATERMARK_ENABLED` to `false` in [`watermark.ts`](watermark.ts) and rebuild. There is deliberately no setting.
+  - **Text:** it is drawn by `sharp` with the system `sans-serif` font. SVG cannot measure text, so it is rendered alone, trimmed and then placed.
+  - **Logo file:** it is read with `fs`, not given to `sharp` as a path, because only Node can read inside `app.asar`.
+- **One drawing pass** ([`overlays.ts`](overlays.ts)): the Watermark first, then the Marker, so the Click is never hidden. With nothing to draw, the PNG is saved as captured, without being encoded again.
+- Displays are numbered and sized in `naming.ts`; `markerGeometry.ts` and `watermarkGeometry.ts` have no `sharp` import, so they stay pure.
 
 ### Preview images
 
@@ -206,20 +215,23 @@ Registers `Control+Alt+Command+R` with `globalShortcut` (`registerStopShortcut`)
 
 ## Tests
 
-| Module                          | Test file                                                                          |
-| ------------------------------- | ---------------------------------------------------------------------------------- |
-| `permissions.ts`                | [`tests/permissions.test.ts`](../../tests/permissions.test.ts)                     |
-| `settings.ts`, `folderCheck.ts` | [`tests/settings.test.ts`](../../tests/settings.test.ts) (real temporary folders)  |
-| `projects.ts`                   | [`tests/projects.test.ts`](../../tests/projects.test.ts) (real temporary folders)  |
-| `tutorialRecording.ts`          | [`tests/tutorialRecording.test.ts`](../../tests/tutorialRecording.test.ts)         |
-| `recorder.ts`                   | [`tests/recorder.test.ts`](../../tests/recorder.test.ts) (fake timers)             |
-| `click.ts`                      | [`tests/click.test.ts`](../../tests/click.test.ts)                                 |
-| `capture.ts`                    | [`tests/capture.test.ts`](../../tests/capture.test.ts)                             |
-| `naming.ts`                     | [`tests/naming.test.ts`](../../tests/naming.test.ts)                               |
-| `markerGeometry.ts`             | [`tests/markerGeometry.test.ts`](../../tests/markerGeometry.test.ts)               |
-| `marker.ts`                     | [`tests/marker.test.ts`](../../tests/marker.test.ts) (checks real rendered pixels) |
-| `imageUrl.ts`                   | [`tests/imageUrl.test.ts`](../../tests/imageUrl.test.ts)                           |
-| `thumbnails.ts`                 | [`tests/thumbnails.test.ts`](../../tests/thumbnails.test.ts)                       |
+| Module                          | Test file                                                                                                |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `permissions.ts`                | [`tests/permissions.test.ts`](../../tests/permissions.test.ts)                                           |
+| `settings.ts`, `folderCheck.ts` | [`tests/settings.test.ts`](../../tests/settings.test.ts) (real temporary folders)                        |
+| `projects.ts`                   | [`tests/projects.test.ts`](../../tests/projects.test.ts) (real temporary folders)                        |
+| `tutorialRecording.ts`          | [`tests/tutorialRecording.test.ts`](../../tests/tutorialRecording.test.ts)                               |
+| `recorder.ts`                   | [`tests/recorder.test.ts`](../../tests/recorder.test.ts) (fake timers)                                   |
+| `click.ts`                      | [`tests/click.test.ts`](../../tests/click.test.ts)                                                       |
+| `capture.ts`                    | [`tests/capture.test.ts`](../../tests/capture.test.ts)                                                   |
+| `naming.ts`                     | [`tests/naming.test.ts`](../../tests/naming.test.ts)                                                     |
+| `markerGeometry.ts`             | [`tests/markerGeometry.test.ts`](../../tests/markerGeometry.test.ts)                                     |
+| `marker.ts`                     | [`tests/marker.test.ts`](../../tests/marker.test.ts) (checks real rendered pixels)                       |
+| `watermarkGeometry.ts`          | [`tests/watermarkGeometry.test.ts`](../../tests/watermarkGeometry.test.ts)                               |
+| `watermark.ts`                  | [`tests/watermark.test.ts`](../../tests/watermark.test.ts) (real rendered pixels and the real logo file) |
+| `overlays.ts`                   | [`tests/overlays.test.ts`](../../tests/overlays.test.ts)                                                 |
+| `imageUrl.ts`                   | [`tests/imageUrl.test.ts`](../../tests/imageUrl.test.ts)                                                 |
+| `thumbnails.ts`                 | [`tests/thumbnails.test.ts`](../../tests/thumbnails.test.ts)                                             |
 
 Not unit-tested, because they call Electron or the OS directly: `index.ts`, `ipc.ts`, `windows.ts`, `menu.ts`, `confirmElectron.ts`, `imageProtocol.ts`, `permissionsElectron.ts`, `screenAccess.ts`, `clickListener.ts`, `captureElectron.ts`, `shortcut.ts`. They are covered by the manual checklist in [plans/V0.2.0_PLAN.md](../../plans/V0.2.0_PLAN.md#5-testing).
 

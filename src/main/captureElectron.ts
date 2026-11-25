@@ -1,9 +1,11 @@
-import { rm, writeFile } from 'fs/promises'
+import { readFile, rm, writeFile } from 'fs/promises'
 import { desktopCapturer, screen, type NativeImage } from 'electron'
+import watermarkLogo from '../../resources/watermark-logo.png?asset'
 import { createCapturer, type ImageLike } from './capture'
-import { drawMarker } from './marker'
+import { createOverlays } from './overlays'
 import type { ProjectsService } from './projects'
 import type { SettingsService } from './settings'
+import { createWatermark } from './watermark'
 
 function wrap(image: NativeImage): ImageLike {
   const { width, height } = image.getSize()
@@ -43,7 +45,10 @@ export function createElectronCapturer(
       if (!state.selectedTutorial) throw new Error('The selected Tutorial no longer exists.')
       return projects.tutorialPath(state.selectedTutorial)
     },
-    drawMarker,
+    // readFile, not a path given to sharp: Node can read inside app.asar, native code cannot.
+    drawOverlays: createOverlays({
+      watermark: createWatermark({ loadLogo: () => readFile(watermarkLogo) })
+    }),
     // No mkdir: the folder was just checked, and re-creating a Tutorial the user deleted would be wrong.
     writeFile: (path, data) => writeFile(path, data),
     removeFile

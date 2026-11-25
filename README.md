@@ -2,7 +2,7 @@
 
 # tuto-record
 
-A macOS app that saves a screenshot of every display each time you click, so your clicks can later be turned into a step-by-step tutorial. Pick a Tutorial, press Start, use your computer as usual, press Stop: the Tutorial now holds one screenshot per display per click, with a cursor arrow on a see-through red circle showing where you clicked, and the window shows them all.
+A macOS app that saves a screenshot of every display each time you click, so your clicks can later be turned into a step-by-step tutorial. Pick a Tutorial, press Start, use your computer as usual, press Stop: the Tutorial now holds one screenshot per display per click, with a cursor arrow on a see-through red circle showing where you clicked and a small Tuto-Record watermark in the corner, and the window shows them all.
 
 Version 0.3 runs on Apple Silicon Macs (M1 or later).
 
@@ -101,7 +101,8 @@ Each counted click is one **capture**: one PNG per connected display, saved in t
 
 - The name is the local time of the click, so the files sort in the order you clicked, which is also the order the window shows them. `d1` is the main display and the others follow from left to right.
 - Each picture has the display's full pixel resolution, Retina included.
-- The picture of the display you clicked also has a **marker** on it: a cursor arrow in the middle of a translucent red circle. The arrow's tip is exactly where you clicked, and the circle is see-through, so the text and buttons under it stay readable. Other displays get a plain screenshot.
+- The picture of the display you clicked also has a **marker** on it: a cursor arrow in the middle of a translucent red circle. The arrow's tip is exactly where you clicked, and the circle is see-through, so the text and buttons under it stay readable. Other displays get no marker.
+- Every picture has a small **watermark** in its bottom-right corner: the Tuto-Record camera and name on a see-through dark plate. It is part of the saved image, so it cannot be removed afterwards, and there is no setting to turn it off.
 
 ## Good to know
 
@@ -124,5 +125,6 @@ Each counted click is one **capture**: one PNG per connected display, saved in t
 | [v0.2.0 implementation](plans/V0.2.0_IMPLEMENTATION.md) | How version 0.2.0 was built, step by step, and its progress notes                           |
 | [v0.3.0 plan](plans/V0.3.0_PLAN.md)                     | The plan for version 0.3.0 (Groups inside Projects, drag and drop)                          |
 | [v0.3.0 implementation](plans/V0.3.0_IMPLEMENTATION.md) | How version 0.3.0 is built, step by step, and its progress notes                            |
+| [Watermark plan](plans/WATERMARK_PLAN.md)               | The plan for the watermark drawn on every screenshot                                        |
 | [Decision records](docs/adr)                            | Why the hard-to-reverse choices were made                                                   |
 | [Working rules for Claude](CLAUDE.md)                   | How Claude works in this project, including keeping the documentation up to date            |

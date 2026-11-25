@@ -36,7 +36,9 @@ function setup(overrides: Partial<CaptureDeps> = {}): {
     getPrimaryDisplayId: () => 10,
     grab: vi.fn(async () => [{ displayId: '10', image: image(2880, 1800) }]),
     getFolder: async () => '/out',
-    drawMarker: vi.fn(async (png: Buffer) => Buffer.from(`${png.toString()}+marker`)),
+    drawOverlays: vi.fn(async (png: Buffer, _size: unknown, marker: unknown) =>
+      Buffer.from(`${png.toString()}+watermark${marker ? '+marker' : ''}`)
+    ),
     writeFile: vi.fn(async (path: string, data: Buffer) => {
       written.set(path, data.toString())
     }),
@@ -53,7 +55,7 @@ describe('createCapturer', () => {
     const { deps, written } = setup()
     const files = await createCapturer(deps)(click)
     expect(files).toEqual([`/out/${stamp}_d1.png`])
-    expect(written.get(`/out/${stamp}_d1.png`)).toBe('png:2880x1800+marker')
+    expect(written.get(`/out/${stamp}_d1.png`)).toBe('png:2880x1800+watermark+marker')
   })
 
   it('saves one PNG per display, named by display number', async () => {
@@ -66,9 +68,10 @@ describe('createCapturer', () => {
     })
     const files = await createCapturer(deps)(click)
     expect(files).toEqual([`/out/${stamp}_d1.png`, `/out/${stamp}_d2.png`])
-    // The click at (5, 5) is on the first display, so only its Screenshot has a Marker.
-    expect(written.get(`/out/${stamp}_d1.png`)).toBe('png:2880x1800+marker')
-    expect(written.get(`/out/${stamp}_d2.png`)).toBe('png:1920x1080')
+    // The click at (5, 5) is on the first display, so only its Screenshot has a Marker;
+    // every Screenshot has the Watermark.
+    expect(written.get(`/out/${stamp}_d1.png`)).toBe('png:2880x1800+watermark+marker')
+    expect(written.get(`/out/${stamp}_d2.png`)).toBe('png:1920x1080+watermark')
   })
 
   it('draws the Marker on the display that was clicked, with the right position', async () => {
@@ -80,26 +83,37 @@ describe('createCapturer', () => {
       ])
     })
     await createCapturer(deps)({ ...click, x: 1540, y: 300 })
-    expect(deps.drawMarker).toHaveBeenCalledTimes(1)
-    expect(deps.drawMarker).toHaveBeenCalledWith(expect.anything(), {
-      width: 1920,
-      height: 1080,
-      scale: 1,
-      cx: 100,
-      cy: 300,
-      radius: 24
-    })
-    expect(written.get(`/out/${stamp}_d2.png`)).toBe('png:1920x1080+marker')
-    expect(written.get(`/out/${stamp}_d1.png`)).toBe('png:2880x1800')
+    expect(deps.drawOverlays).toHaveBeenCalledTimes(2)
+    expect(deps.drawOverlays).toHaveBeenCalledWith(
+      expect.anything(),
+      { width: 1920, height: 1080 },
+      { width: 1920, height: 1080, scale: 1, cx: 100, cy: 300, radius: 24 }
+    )
+    expect(deps.drawOverlays).toHaveBeenCalledWith(
+      expect.anything(),
+      { width: 2880, height: 1800 },
+      null
+    )
+    expect(written.get(`/out/${stamp}_d2.png`)).toBe('png:1920x1080+watermark+marker')
+    expect(written.get(`/out/${stamp}_d1.png`)).toBe('png:2880x1800+watermark')
   })
 
-  it('fails the Capture and removes its files when drawing the Marker fails', async () => {
+  it.each([
+    ['the clicked display', true],
+    ['another display', false]
+  ])('fails the Capture and removes its files when drawing on %s fails', async (_, onClicked) => {
     const { deps, written } = setup({
-      drawMarker: vi.fn(async () => {
-        throw new Error('marker failed')
+      getDisplays: () => [display(10, 0), display(20, 1440)],
+      grab: vi.fn(async () => [
+        { displayId: '10', image: image(2880, 1800) },
+        { displayId: '20', image: image(2880, 1800) }
+      ]),
+      drawOverlays: vi.fn(async (png, _size, marker) => {
+        if (Boolean(marker) === onClicked) throw new Error('drawing failed')
+        return png
       })
     })
-    await expect(createCapturer(deps)(click)).rejects.toThrow(/marker failed/)
+    await expect(createCapturer(deps)(click)).rejects.toThrow(/drawing failed/)
     expect(written.size).toBe(0)
   })
 
@@ -124,7 +138,13 @@ describe('createCapturer', () => {
       ])
     })
     await createCapturer(deps)(click)
-    expect(written.get(`/out/${stamp}_d2.png`)).toBe('png:1920x1080')
+    expect(written.get(`/out/${stamp}_d2.png`)).toBe('png:1920x1080+watermark')
+    // The Watermark is sized from the resized image, not the thumbnail.
+    expect(deps.drawOverlays).toHaveBeenCalledWith(
+      expect.anything(),
+      { width: 1920, height: 1080 },
+      null
+    )
   })
 
   it('fails and removes the files of this Capture when one display is missing', async () => {

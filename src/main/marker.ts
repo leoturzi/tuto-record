@@ -1,4 +1,4 @@
-import sharp from 'sharp'
+import type { OverlayOptions } from 'sharp'
 import type { MarkerSpec } from './markerGeometry'
 
 const RED = '#ff3b30'
@@ -41,10 +41,7 @@ export function markerSvg(spec: MarkerSpec): string {
   )
 }
 
-/** Draws the Marker (translucent circle and cursor) on a PNG and returns the new PNG. */
-export async function drawMarker(png: Buffer, spec: MarkerSpec): Promise<Buffer> {
-  return sharp(png)
-    .composite([{ input: Buffer.from(markerSvg(spec)), top: 0, left: 0 }])
-    .png()
-    .toBuffer()
+/** The layer that draws the Marker (translucent circle and cursor) on a Screenshot. */
+export function markerLayer(spec: MarkerSpec): OverlayOptions {
+  return { input: Buffer.from(markerSvg(spec)), top: 0, left: 0 }
 }
