@@ -1,6 +1,6 @@
 {
   "name": "tuto-record",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Takes a screenshot of every display each time you click",
   "main": "./out/main/index.js",
   "author": "",

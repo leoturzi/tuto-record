@@ -17,7 +17,7 @@ Every Screenshot gets a **Watermark**: the camera from the logo and the words "T
 | W7  | Size      | From `s`, the shorter side of the Screenshot: logo height 3 % of `s` (at least 14 px). The plate is 2 % of `s` from the right and bottom edges. Relative to the logo height: text 60 %, gap 30 %, plate padding 40 % at the sides and 30 % at the top and bottom. Corner radius 18 % of the plate height |
 | W8  | Order     | The Watermark first, the Marker on top, so the Click is never hidden                                                                                                                                                                                                                                     |
 | W9  | Failure   | Fails the whole Capture and removes its files, as a Marker error does                                                                                                                                                                                                                                    |
-| W10 | Docs      | **Watermark** joins the glossary; no ADR, no version bump                                                                                                                                                                                                                                                |
+| W10 | Docs      | **Watermark** joins the glossary; no ADR. Ships as v0.3.2, bumped in the same pull request (first planned without a bump)                                                                                                                                                                                |
 
 ## 2. What was checked before planning
 
@@ -169,7 +169,7 @@ Then the pull request, which lists any of these not done.
 - `typecheck`, `lint` and `test` pass; `npm run build:unpack` builds the app.
 - Run in the packaged app's runtime, with its packaged `sharp` and the logo read from `app.asar` (not through the app's own capture): the font renders and the look matches option B.
 - Drawing time there, median of 16 runs: clicked display 87 → 100 ms at 2880 × 1800 and 238 → 260 ms at 5120 × 2880; an unclicked display now takes 89 and 226 ms, where it was written without drawing before.
-- The Watermark ships in v0.3.1 (decided 2026-11-25). The version bump is not part of this change (W10).
+- v0.3.1 was published with only the packaging fix, so the Watermark ships in v0.3.2; the bump is in this branch.
 - Still to do by hand: the checklist above.
 
 ## Test map
